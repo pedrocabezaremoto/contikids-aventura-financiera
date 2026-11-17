@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+
+/* Tokens del sistema de diseño (§5 del contexto). */
+@theme {
+  --font-display: 'Montserrat', system-ui, sans-serif;
+  --font-body: 'Quicksand', system-ui, sans-serif;
+
+  --color-ink: #061859;
+  --color-muted: #4b5877;
+  --color-sky-a: #6fcfd4;
+  --color-sky-b: #e3f6f7;
+  --color-card: #ffffff;
+
+  --color-teal: #2e9ca3;
+  --color-teal-shadow: #1f6e73;
+  --color-blue: #3e6aa8;
+  --color-blue-shadow: #2a4c7e;
+  --color-red: #ff5757;
+  --color-red-shadow: #c93a3a;
+  --color-green: #7ed957;
+  --color-green-shadow: #5dae3c;
+  --color-yellow: #ecc911;
+  --color-yellow-shadow: #b39a0b;
+  --color-purple: #812ea3;
+  --color-purple-shadow: #5e2078;
+  --color-gold: #d58a24;
+
+  --radius-card: 24px;
+  --radius-btn: 28px;
+  --shadow-card: 0 6px 0 rgba(6, 24, 89, 0.18);
+}
+
+/* Modo oscuro (§5): se redefinen los tokens de fondo y texto. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-sky-a: #14307a;
+    --color-sky-b: #0a1238;
+    --color-card: #1b2a63;
+    --color-ink: #f2f6ff;
+    --color-muted: #b8c3e6;
+  }
+}
+
+@layer base {
+  html {
+    font-size: 18px;
+  }
+  body {
+    @apply min-h-dvh font-body font-semibold text-ink;
+    background: linear-gradient(180deg, var(--color-sky-a), var(--color-sky-b)) fixed;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-extrabold;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-yellow);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* Tarjeta con sombra sólida inferior: look "botón de juego". */
+  .card-game {
+    @apply rounded-[var(--radius-card)] bg-card p-4;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Botón de juego: alto ≥ 56px, sombra sólida del color oscuro, se "hunde" al presionar. */
+  .btn-game {
+    --btn-bg: var(--color-teal);
+    --btn-shadow: var(--color-teal-shadow);
+    @apply inline-flex min-h-14 min-w-12 items-center justify-center gap-2 rounded-[var(--radius-btn)] px-6 font-display font-extrabold text-white;
+    background: var(--btn-bg);
+    box-shadow: 0 5px 0 var(--btn-shadow);
+    transition:
+      translate 0.1s ease,
+      box-shadow 0.1s ease;
+  }
+  .btn-game:active {
+    translate: 0 3px;
+    box-shadow: 0 2px 0 var(--btn-shadow);
+  }
+  .btn-game--blue {
+    --btn-bg: var(--color-blue);
+    --btn-shadow: var(--color-blue-shadow);
+  }
+  .btn-game--red {
+    --btn-bg: var(--color-red);
+    --btn-shadow: var(--color-red-shadow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

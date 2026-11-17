@@ -1,8 +1,16 @@
 node_modules/
 dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Variables de entorno: nunca se suben (solo .env.example)
 .env
 *.env.local
-coverage/
+
+# Bases de datos y respaldos
 *.db
 *.sql.gz
+
+# Referencias originales del equipo (incluye PDF con cédulas)
 files-htmlsANDother/

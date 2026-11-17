@@ -1,0 +1,28 @@
+# Fase 0: solo la base de datos propia de Contikids.
+# La API y la web en contenedores (producción) llegan en la Fase 0.5.
+name: contikids
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: contikids-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Falta POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Falta POSTGRES_DB en .env}
+    ports:
+      # Solo localhost, nunca 0.0.0.0 (los puertos de Docker se saltan UFW).
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    mem_limit: 256m
+
+volumes:
+  pgdata:

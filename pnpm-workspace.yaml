@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm bloquea los scripts de instalación por defecto; aquí se decide cuáles pueden correr.
+allowBuilds:
+  '@parcel/watcher': true # watcher nativo (modo --watch)
+  '@prisma/client': true # genera el cliente de Prisma
+  '@prisma/engines': true # descarga los motores de Prisma
+  '@scarf/scarf': false # solo telemetría de swagger-ui: no se permite
+  argon2: true # hash de PIN y contraseñas (binario nativo)
+  esbuild: true # binario de esbuild (Vite / tsx)
+  prisma: true # CLI de Prisma

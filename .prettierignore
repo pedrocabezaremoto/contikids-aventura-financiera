@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+docs
+files-htmlsANDother
+apps/api/prisma/migrations
+*.md

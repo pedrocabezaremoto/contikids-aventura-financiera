@@ -1,0 +1,311 @@
+// Schema de CONTIKIDS — copia EXACTA de docs/CONTIKIDS_CONTEXTO_LLM.md §8 (v1.1).
+// Si cambias algo aquí, actualiza primero el documento de contexto.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubmoduleType {
+  LESSON
+  QUIZ
+  EXAM
+}
+
+enum ProgressStatus {
+  LOCKED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum AccountNature {
+  DEBIT   // deudora
+  CREDIT  // acreedora
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+model Teacher {
+  id           Int       @id @default(autoincrement())
+  fullName     String
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  sections     Section[]
+}
+
+model Section {
+  id         Int       @id @default(autoincrement())
+  teacherId  Int
+  code       String    @unique   // código corto que se escribe en el aula, ej. "5A-2026"
+  grade      String              // "4to", "5to", "6to"
+  schoolTerm String              // "2026-2027"
+  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+  students   Student[]
+}
+
+model Student {
+  id              Int       @id @default(autoincrement())
+  sectionId       Int
+  fullName        String
+  username        String    @unique      // generado: sofia_m
+  age             Int
+  pinHash         String
+  avatarColor     String
+  coins           Int       @default(0)  // monedas Waddles (premio), NO bolívares
+  xp              Int       @default(0)
+  failedPinCount  Int       @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  totalPlaySecs   Int       @default(0)
+  createdAt       DateTime  @default(now())
+  section         Section   @relation(fields: [sectionId], references: [id])
+  moduleProgress  ModuleProgress[]
+  submoduleProg   SubmoduleProgress[]
+  attempts        Attempt[]
+  journalAttempts JournalAttempt[]
+  journalEntries  JournalEntry[]
+  badges          StudentBadge[]
+  sessions        PlaySession[]
+}
+
+model LearningModule {
+  id          Int     @id @default(autoincrement())
+  order       Int     @unique       // 1..5 (orden de desbloqueo)
+  code        String  @unique       // "M1"
+  title       String
+  color       String
+  lessons     Lesson[]
+  quizzes     Quiz[]
+  scenarios   Scenario[]
+  badge       Badge?
+  progress    ModuleProgress[]
+  subProgress SubmoduleProgress[]
+  sessions    PlaySession[]
+}
+
+model Lesson {
+  id        Int            @id @default(autoincrement())
+  moduleId  Int
+  order     Int
+  title     String
+  blocks    ContentBlock[]
+  module    LearningModule @relation(fields: [moduleId], references: [id])
+}
+
+model ContentBlock {
+  id        Int     @id @default(autoincrement())
+  lessonId  Int
+  order     Int
+  kind      String  // "text" | "image" | "diagram" | "waddles_tip"
+  text      String?
+  assetPath String?
+  lesson    Lesson  @relation(fields: [lessonId], references: [id])
+}
+
+model Quiz {
+  id        Int            @id @default(autoincrement())
+  moduleId  Int
+  type      SubmoduleType  // QUIZ o EXAM
+  title     String
+  questions Question[]
+  module    LearningModule @relation(fields: [moduleId], references: [id])
+  attempts  Attempt[]
+}
+
+model Question {
+  id          Int      @id @default(autoincrement())
+  quizId      Int
+  order       Int
+  kind        String   // "single_choice" | "classify" | "balance" | "numeric"
+  prompt      String
+  hint        String   // pista de Waddles
+  explanation String   // feedback al responder
+  payload     Json?    // datos extra para "classify"/"balance"
+  quiz        Quiz     @relation(fields: [quizId], references: [id])
+  options     AnswerOption[]
+  answers     AttemptAnswer[]
+}
+
+model AnswerOption {
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  text       String
+  isCorrect  Boolean
+  question   Question @relation(fields: [questionId], references: [id])
+}
+
+model Attempt {
+  id         Int       @id @default(autoincrement())
+  studentId  Int
+  quizId     Int
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  score      Int?
+  passed     Boolean?
+  student    Student   @relation(fields: [studentId], references: [id])
+  quiz       Quiz      @relation(fields: [quizId], references: [id])
+  answers    AttemptAnswer[]
+}
+
+model AttemptAnswer {
+  id               Int      @id @default(autoincrement())
+  attemptId        Int
+  questionId       Int
+  selectedOptionId Int?
+  freeAnswer       Json?
+  isCorrect        Boolean
+  timeSeconds      Int
+  attempt          Attempt  @relation(fields: [attemptId], references: [id])
+  question         Question @relation(fields: [questionId], references: [id])
+}
+
+// ---- Simulador contable (Libro Diario / Mayor / Balance) ----
+model LedgerAccount {
+  id     Int           @id @default(autoincrement())
+  code   String        @unique   // formato corto: "1.1", "4.1"
+  name   String                  // "Caja (mi alcancía)"
+  type   AccountType
+  nature AccountNature
+  lines  JournalLine[]
+}
+
+// Una historia con varias operaciones en orden (ej. "La semana de la limonada").
+// El Libro Mayor y el Balance de Comprobación se arman POR ESCENARIO.
+model Scenario {
+  id          Int                @id @default(autoincrement())
+  moduleId    Int
+  code        String             @unique   // "M5_LEMONADE_WEEK"
+  title       String                       // "Mi puesto de limonada"
+  description String?
+  module      LearningModule     @relation(fields: [moduleId], references: [id])
+  exercises   PracticeExercise[]
+}
+
+// Una operación del escenario = un asiento que el niño debe registrar.
+model PracticeExercise {
+  id         Int              @id @default(autoincrement())
+  scenarioId Int
+  order      Int                         // 1..N dentro del escenario
+  dayLabel   String                      // "Día 2"
+  statement  String                      // "Vendes 4 vasos de limonada y te pagan Bs. 80 en efectivo."
+  hint       String                      // pregunta guía de Waddles
+  solution   Json                        // asiento esperado: [{ accountCode: "1.1", debit: 80 }, { accountCode: "4.1", credit: 80 }]
+  scenario   Scenario         @relation(fields: [scenarioId], references: [id])
+  attempts   JournalAttempt[]
+  entries    JournalEntry[]
+  @@unique([scenarioId, order])
+}
+
+// Cada vez que el niño toca "Revisar asiento" (correcto o no). NO alimenta el Mayor.
+model JournalAttempt {
+  id         Int              @id @default(autoincrement())
+  studentId  Int
+  exerciseId Int
+  submitted  Json                        // líneas enviadas: [{ accountCode, debit, credit }]
+  isCorrect  Boolean
+  errorCode  String?                     // primer error: "MISSING_SIDE" | "WRONG_SIDE" | "WRONG_ACCOUNT" | "UNBALANCED" | "WRONG_AMOUNT" | "MISSING_ACCOUNT"
+  createdAt  DateTime         @default(now())
+  student    Student          @relation(fields: [studentId], references: [id])
+  exercise   PracticeExercise @relation(fields: [exerciseId], references: [id])
+}
+
+// Asiento del Libro Diario: SOLO se crea cuando el intento es correcto.
+model JournalEntry {
+  id         Int              @id @default(autoincrement())
+  studentId  Int
+  exerciseId Int
+  entryDate  DateTime         @default(now())
+  student    Student          @relation(fields: [studentId], references: [id])
+  exercise   PracticeExercise @relation(fields: [exerciseId], references: [id])
+  lines      JournalLine[]
+  @@unique([studentId, exerciseId])   // un asiento correcto por operación y alumno
+}
+
+model JournalLine {
+  id        Int           @id @default(autoincrement())
+  entryId   Int
+  accountId Int
+  debit     Decimal       @default(0) @db.Decimal(10,2)
+  credit    Decimal       @default(0) @db.Decimal(10,2)
+  entry     JournalEntry  @relation(fields: [entryId], references: [id])
+  account   LedgerAccount @relation(fields: [accountId], references: [id])
+}
+// Libro Mayor y Balance de Comprobación se CALCULAN (no se guardan) desde las JournalLine
+// de los JournalEntry del alumno cuyo exercise.scenarioId = escenario pedido.
+// Como JournalEntry solo existe para asientos correctos, los intentos fallidos nunca entran.
+
+// ---- Progreso y gamificación ----
+model ModuleProgress {
+  id           Int            @id @default(autoincrement())
+  studentId    Int
+  moduleId     Int
+  status       ProgressStatus @default(LOCKED)
+  percent      Int            @default(0)
+  bestScore    Int?
+  updatedAt    DateTime       @updatedAt
+  student      Student        @relation(fields: [studentId], references: [id])
+  module       LearningModule @relation(fields: [moduleId], references: [id])
+  @@unique([studentId, moduleId])
+}
+
+model SubmoduleProgress {
+  id         Int            @id @default(autoincrement())
+  studentId  Int
+  moduleId   Int
+  type       SubmoduleType
+  status     ProgressStatus @default(LOCKED)
+  attempts   Int            @default(0)
+  bestScore  Int?
+  timeSecs   Int            @default(0)
+  student    Student        @relation(fields: [studentId], references: [id])
+  module     LearningModule @relation(fields: [moduleId], references: [id])
+  @@unique([studentId, moduleId, type])
+}
+
+model Badge {
+  id        Int            @id @default(autoincrement())
+  moduleId  Int?           @unique
+  name      String
+  imagePath String
+  module    LearningModule? @relation(fields: [moduleId], references: [id])
+  owners    StudentBadge[]
+}
+
+model StudentBadge {
+  studentId Int
+  badgeId   Int
+  earnedAt  DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  @@id([studentId, badgeId])
+}
+
+model PlaySession {             // CU-07 / CU-12
+  id         Int             @id @default(autoincrement())
+  studentId  Int
+  moduleId   Int?
+  startedAt  DateTime        @default(now())
+  endedAt    DateTime?
+  activeSecs Int             @default(0)   // por heartbeat cada 30 s
+  student    Student         @relation(fields: [studentId], references: [id])
+  module     LearningModule? @relation(fields: [moduleId], references: [id])
+}
+
+model SystemSettings {
+  id                    Int @id @default(1)
+  minPassingScore       Int @default(70)   // %
+  highTimeThresholdMins Int @default(60)   // alerta "¡Tiempo alto!"
+  maxPinAttempts        Int @default(5)
+  pinLockMinutes        Int @default(5)
+}
