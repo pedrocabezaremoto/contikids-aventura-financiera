@@ -3,12 +3,16 @@
 > Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.1).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
-## Estado al 2026-11-18
+## Estado al 2026-11-18 (pausa: Pedro descansa, se continúa más tarde)
 
-### ✅ Fase 0 — Base (terminada; falta el OK de Pedro para seguir)
+**Dónde quedamos:** la Fase 0 está **aprobada por Pedro** (la revisó desde GitHub). La Fase 0.5 **NO se empieza hasta su OK**.
+
+### ✅ Fase 0 — Base (APROBADA)
 - **Commit `040fe62` — docs: referencias de diseño.** HTML del equipo y 3 diagramas (casos de uso, ER detallado y ER resumido) en `docs/design-refs/`.
-  - Se **omitió** `WhatsApp Image 2026-11-16 at 21.57.42.jpeg` (mockup del panel docente): muestra nombres de niños y "PIN: 1234". Pedro decide si se sube.
-- **Commit de la Fase 0 — feat: base del monorepo.**
+- **Commit de cierre — docs:** se subió `WhatsApp Image 2026-11-16 at 21.57.42.jpeg`, el mockup del panel docente.
+  - Pedro confirmó que los nombres y el PIN son **inventados**.
+  - ⚠️ Del panel docente se toma **solo el diseño**. La columna PIN **NO se implementa** (§12): solo el botón "Restablecer PIN", que muestra el PIN nuevo **una sola vez**.
+- **Commit `55ef050` — feat: base del monorepo (Fase 0).**
   - Monorepo pnpm 11.5.2 (Node 22): `apps/web`, `apps/api`, `packages/shared`. TypeScript estricto, ESLint 9 (flat config) y Prettier.
   - Versiones elegidas: TypeScript 5.9, NestJS 11, Prisma 6.19, Vite 7, Vitest 3, React 19, Tailwind 4.3. Las mayores nuevas (TS 7, NestJS 12, Prisma 8 RC, Vite 8) se evitaron por ser muy recientes.
   - `packages/shared`: `formatBs()` → `Bs. 1.250,00`, con 7 tests.
@@ -33,15 +37,22 @@
 - Servidor: 2 GB de swap agregados (`/swapfile`, swappiness 10).
 
 ### ⏳ Pendiente
-- [ ] **OK de Pedro** para la Fase 0.5.
-- [ ] Pedro sube `libro_diario_propuesta.html` a `docs/design-refs/` (no está en disco; trae a Waddles en base64).
-- [ ] Pedro decide si se sube el mockup del panel docente (`21.57.42.jpeg`).
-- [ ] Equipo de Contenido:
-  - lecciones de M2–M5;
-  - en M1: trueque y necesidad vs deseo;
-  - montos finales del escenario de la limonada;
-  - arte de las medallas (`/badges/m1..m5.webp`).
-- [ ] Sugerencia: agregar `@@unique` a `Lesson(moduleId, order)`, `Quiz(moduleId, type)`, `Question(quizId, order)` y `ContentBlock(lessonId, order)`. Hoy el seed los busca por esa clave a mano. Requiere cambiar §8 primero.
+**De Pedro (para más tarde):**
+- [ ] Probar la Fase 0 él mismo:
+  - `pnpm dev:api` + `pnpm dev:web`, con reenvío de puertos 5173 y 4410 en VS Code;
+  - abrir http://127.0.0.1:5173 y http://127.0.0.1:4410/api/docs.
+- [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/` (no está en disco; trae a Waddles en base64) → luego commit.
+- [ ] Dar el **OK para la Fase 0.5**.
+
+**Inicio de la Fase 1 (decidido por Pedro):**
+- [ ] Primero actualizar la §8 del contexto a **v1.2** con claves únicas en `Lesson(moduleId, order)`, `Quiz(moduleId, type)`, `Question(quizId, order)` y `ContentBlock(lessonId, order)`.
+- [ ] Después: nueva migración + simplificar el seed para usar `upsert` en esos modelos (hoy los busca a mano).
+
+**Equipo de Contenido:**
+- [ ] Lecciones de M2–M5.
+- [ ] En M1: trueque y necesidad vs deseo.
+- [ ] Montos finales del escenario de la limonada.
+- [ ] Arte de las medallas (`/badges/m1..m5.webp`).
 
 ## Reglas de trabajo acordadas (desde 2026-11-18)
 - Claude codea directo en el VPS.
@@ -63,13 +74,19 @@
 Nada de Contikids escucha en `0.0.0.0`. No se tocan Traefik, EasyPanel, PM2, el Postgres del host ni las otras apps.
 
 ## Fases (§14 del contexto)
-- [x] **Fase 0 — Base** (2026-11-18).
+- [x] **Fase 0 — Base** (2026-11-18, aprobada por Pedro).
 - [ ] **Fase 0.5 — Despliegue** en `contikids.pedroservicios.xyz`: Opción C del reporte (compose publicado en `172.18.0.1:4400` + `/etc/easypanel/traefik/config/contikids.yaml`) + webhook de auto-deploy como el de Fresh.
 - [ ] Fase 1 — Acceso (bienvenida, login docente, código de sección + perfiles + PIN, guards).
 - [ ] Fase 2 — Estudiante (mapa, lección, quiz, prueba, monedas/XP/medallas, M1 completo).
 - [ ] Fase 3 — Simulador contable (Diario, Mayor, Balance por escenario).
 - [ ] Fase 4 — Docente (KPIs, CRUD alumnos, progreso, tiempos, reportes).
 - [ ] Fase 5 — Pulido (PWA offline, sonidos, modo oscuro, pruebas 360px).
+
+## Estado del entorno al pausar
+- El contenedor `contikids-postgres` queda **corriendo** (healthy, `127.0.0.1:5433`, `restart: unless-stopped`) con la migración y el seed aplicados.
+- La API y Vite **están apagados**: se levantan con `pnpm dev:api` / `pnpm dev:web`.
+- `.env` en la raíz (no se sube): claves de Postgres, JWT y `SEED_TEACHER_PASSWORD`. Los PIN de los alumnos demo se imprimieron en el primer seed; para verlos de nuevo: `SEED_RESET_DEMO_PINS=1 pnpm db:seed`.
+- El CI se revisa en la pestaña **Actions** de GitHub (`gh` no está instalado en el VPS).
 
 ## Notas para el mockup → app
 - Waddles como asset en `apps/web/src/assets` (no base64).
