@@ -3,12 +3,59 @@
 > Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.2).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
-## Estado al 2026-11-18
+## Estado al 2026-11-18 (Fase 1 terminada)
 
-**Dónde quedamos:** la Fase 0.5 está **aprobada** y el mantenimiento previo a la Fase 1 está hecho. Lo próximo es la Fase 1, **solo con el OK de Pedro**.
-- Pausa hasta el 2026-11-19: ver **Plan para mañana** abajo.
+**Dónde quedamos:** la **Fase 1 — Acceso** está en vivo y probada en https://contikids.pedroservicios.xyz (commit `f3bbae9`).
+- La Fase 2 **NO se empieza sin el OK de Pedro**.
+- La limpieza del VPS y el cierre del puerto quedaron **para después** (decisión de Pedro); el plan sigue abajo y en `/root/reporte-limpieza.md`.
+- Las credenciales demo se dan **solo por chat**, nunca en el repo.
 
-## 🗓️ Plan para mañana (2026-11-19) — en este orden, cada paso con el OK de Pedro
+### ✅ Fase 1 — Acceso (2026-11-18)
+- **§8 → v1.2:** claves únicas `Lesson(moduleId, order)`, `ContentBlock(lessonId, order)`, `Quiz(moduleId, type)` y `Question(quizId, order)`.
+  - Migración `20261118110000_unique_keys_v1_2`. `prisma migrate dev` no corre en modo no interactivo, así que se generó con `prisma migrate diff` y se aplicó con `migrate deploy`.
+  - El seed usa `upsert` en esos modelos (sigue idempotente).
+- **API (NestJS):**
+  - `POST /auth/teacher/login`: argon2, con hash de relleno si el correo no existe.
+  - `GET /auth/students?sectionCode=`: solo `id`, `name` (primer nombre) y `avatarColor`. Nunca el PIN.
+  - `POST /auth/student/login`: argon2.
+    - Al llegar a `maxPinAttempts` fallidos, el perfil queda bloqueado `pinLockMinutes` (423, `code: LOCKED`). Valores de `SystemSettings`.
+    - Cada fallo devuelve `attemptsLeft`. El login correcto resetea el contador y actualiza `lastLoginAt`.
+  - JWT:
+    - access de 15 min, solo en memoria del navegador;
+    - refresh de 7 días en el cookie `ck_refresh` (`HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`);
+    - `POST /auth/refresh` y `POST /auth/logout`. El refresh no se puede revocar en el servidor: no hay tabla de sesiones.
+  - `AuthGuard` + `@Roles('TEACHER'|'STUDENT')`, y `GET /me`.
+  - Rutas provisionales protegidas por rol: `GET /student/home` y `GET /teacher/home`.
+  - Rate limit (`@nestjs/throttler`):
+    - global de 120/min por IP;
+    - logins con 10/min;
+    - lista de perfiles con 30/min;
+    - el health no tiene límite.
+    - `trust proxy` toma la IP real del cliente detrás de Traefik + Nginx.
+  - Tests Jest: 14 en total. 6 de login de estudiante (PIN correcto, incorrecto, bloqueo, bloqueo vigente, bloqueo vencido, perfil inexistente), 6 del guard por rol y 2 del health.
+  - `@nestjs/jwt` se quedó en la **v11**: la v12 es solo ESM y no carga en una API CommonJS.
+- **Web (React):**
+  - `react-router` v7 con rutas protegidas por rol (`RequireRole`). La sesión se recupera al abrir la app vía `/auth/refresh`.
+  - Rutas:
+    - `/` bienvenida (¿Docente o Estudiante?) · `/docente/entrar` login docente;
+    - `/estudiante` código de sección (se recuerda en el dispositivo) · `/estudiante/:code` elegir perfil · `/estudiante/:code/:id` PIN;
+    - `/mapa` destino del estudiante · `/docente` destino del docente (ambos provisionales, con Salir);
+    - `/estado` página técnica de la Fase 0.
+  - PIN con teclado propio de 4 dígitos: teclas de 64 px, también acepta el teclado físico. Waddles avisa con mensaje amable, intentos restantes y aviso de bloqueo.
+  - **Modo claro por defecto.** Se quitó el oscuro automático (`prefers-color-scheme`); el oscuro queda en `:root[data-theme='dark']` para activarlo desde Ajustes.
+  - Waddles y el logo se extrajeron del prototipo como archivos (`apps/web/src/assets/`), sin base64.
+  - Probado a 360 px (capturas con Chrome headless): sin scroll horizontal. Cero CDN.
+- **Probado en el dominio:**
+  - docente: login, `/me`, panel, 403 en la ruta del estudiante, refresh, logout y refresh rechazado tras el logout;
+  - estudiantes: 2 alumnos entran con PIN y reciben 403 en la ruta del docente;
+  - bloqueo tras 5 PIN incorrectos (423), que rechaza incluso el PIN correcto.
+
+### Pendiente de la Fase 1 (pulido visual, después)
+- El logo (`logo-contikids.webp`) tiene fondo blanco: hace falta una versión con fondo transparente.
+- Revisar los emojis de los botones de bienvenida (en dispositivos sin fuente de emojis se ven como cuadros).
+- Comparar con la referencia `ContiKids · Pantallas de inicio de sesión.html` (panel teal con el logo a la izquierda en desktop).
+
+## 🗓️ Plan pendiente (pospuesto por Pedro) — cada paso con su OK
 > Pausa decidida por Pedro el 2026-11-18. Lo que tiene nombres de proyectos ajenos o detalles de seguridad del servidor está en `/root/reporte-limpieza.md` (privado, fuera del repo).
 
 1. **Limpieza del VPS** (decisiones de Pedro, detalle en `/root/reporte-limpieza.md`):
@@ -112,7 +159,7 @@
 - [x] Configurar el webhook en GitHub (hecho 2026-11-18; ping ✔). El secreto está solo en el `.env` del VPS.
 - [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/`.
 - [ ] Mañana: confirmar la limpieza del VPS y las propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
-- [ ] Dar el **OK para la Fase 1**.
+- [ ] Dar el **OK para la Fase 2**.
 
 **Inicio de la Fase 1 (decidido por Pedro):**
 - [ ] Primero actualizar la §8 del contexto a **v1.2** con claves únicas en `Lesson(moduleId, order)`, `Quiz(moduleId, type)`, `Question(quizId, order)` y `ContentBlock(lessonId, order)`.
@@ -149,7 +196,7 @@ Nada de Contikids escucha en `0.0.0.0`. Ojo: `pnpm dev:api` y la api de producci
 ## Fases (§14 del contexto)
 - [x] **Fase 0 — Base** (2026-11-18, aprobada).
 - [x] **Fase 0.5 — Despliegue** (2026-11-18): en vivo, con auto-deploy por webhook probado.
-- [ ] Fase 1 — Acceso (bienvenida, login docente, código de sección + perfiles + PIN, guards).
+- [x] **Fase 1 — Acceso** (2026-11-18): en vivo y probada.
 - [ ] Fase 2 — Estudiante (mapa, lección, quiz, prueba, monedas/XP/medallas, M1 completo).
 - [ ] Fase 3 — Simulador contable (Diario, Mayor, Balance por escenario).
 - [ ] Fase 4 — Docente (KPIs, CRUD alumnos, progreso, tiempos, reportes).
