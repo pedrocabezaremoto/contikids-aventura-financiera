@@ -15,8 +15,10 @@
 #   - flock: nunca corren 2 deploys a la vez (el segundo espera su turno).
 #   - Antes de construir, las imágenes actuales se guardan como :previous.
 #   - Si el health falla, se avisa en el log y NO se borra nada (rollback manual abajo).
-#   - La limpieza solo toca imágenes con la etiqueta de Contikids y la caché de build
-#     por encima de un tope (no vacía la caché de otras apps).
+#   - Limpieza: imágenes sin uso con la etiqueta de Contikids + caché de build sin uso.
+#     OJO: `docker builder prune -af` vacía TODA la caché de build sin uso del Docker del host.
+#     Hoy solo Contikids construye imágenes en este VPS (antes de Contikids la caché era 0 B).
+#     Se usa -af porque --max-used-space no recorta nada con el almacén de containerd.
 #
 # Uso:  ./deploy.sh            (lo llama también el webhook de GitHub)
 #
@@ -29,7 +31,6 @@ STATE="$LOG_DIR/contikids-last-deploy"
 LOCK="/tmp/contikids-deploy.lock"
 BRANCH="main"
 APP_LABEL="org.contikids.app=contikids"
-BUILD_CACHE_MAX="1GB" # caché de build acotada (el disco del VPS es chico)
 HEALTH_TIMEOUT=180
 IMAGES=(migrate api web)
 
@@ -146,5 +147,5 @@ echo "$AFTER_FULL" >"$STATE"
 # ---------- 6. Limpieza (solo lo de Contikids) ----------
 log "6/6 limpieza"
 docker image prune -f --filter "label=$APP_LABEL" >/dev/null
-docker builder prune -f --max-used-space "$BUILD_CACHE_MAX" >/dev/null
+docker builder prune -af >/dev/null
 log "✅ Deploy COMPLETO ($AFTER)"

@@ -5,7 +5,28 @@
 
 ## Estado al 2026-11-18
 
-**Dónde quedamos:** la Fase 0.5 (despliegue) está **terminada, en vivo y con auto-deploy probado** en https://contikids.pedroservicios.xyz. Lo próximo es la Fase 1, **solo con el OK de Pedro**.
+**Dónde quedamos:** la Fase 0.5 está **aprobada** y el mantenimiento previo a la Fase 1 está hecho. Lo próximo es la Fase 1, **solo con el OK de Pedro**.
+- Pedro debe decidir qué proyectos viejos de Outlier se borran (inventario privado en `/root/reporte-limpieza.md`, fuera del repo).
+
+### ✅ Mantenimiento antes de la Fase 1 (2026-11-18)
+- **Disco: 83 % → 72 %.**
+  - Hecho: `pnpm store prune` (−1.8 GB), `journalctl --vacuum-size=200M` (−3.8 GB), `apt-get clean` (−0.3 GB) y vaciar la caché de build de Contikids (−6.3 GB).
+  - Sin tocar nada de otras apps. El volumen huérfano `fresh-service-digital_fresh_db` es de Fresh: **no se borró**.
+  - Propuestas para Pedro: caché de npm (3.9 GB), objetos sueltos de `/root/.git` (895 MB), logs rotados y límite de journald (detalle en `/root/reporte-limpieza.md`).
+- **Imagen de la api: 697 MB → 271 MB** (commit `aede2c2`).
+  - Runtime con `pnpm deploy --prod` sobre `alpine:3.24` + el binario de Node 22 de `node:22-alpine`.
+  - Sin CLI de Prisma, sin WASM/edge de Prisma, sin tipos, source maps ni docs. `node_modules`: 339 → 57 MB.
+- **Nuevo servicio `migrate`** (imagen `contikids-migrate`: el runtime más el CLI de Prisma en `/opt/prisma-cli`).
+  - Corre `prisma migrate deploy` y termina. La api arranca solo si termina bien (`service_completed_successfully`).
+  - La api ya no migra al arrancar.
+- **Deploy inteligente** (`deploy.sh`):
+  - Compara contra el último commit desplegado con éxito (`/root/logs/contikids-last-deploy`). Si solo cambiaron `*.md`, `docs/**` o `progreso.md` → `📝 solo docs, sin rebuild`.
+  - `FORCE_REBUILD=1 ./deploy.sh` fuerza el rebuild.
+  - Probado con `74971dd`: tardó 2 s, no reinició contenedores, health OK y las 4 páginas igual.
+- **Limpieza de caché:** `--max-used-space` no recorta nada con el almacén de containerd, así que `deploy.sh` ahora corre `docker builder prune -af` tras cada deploy exitoso.
+  - ⚠️ Esto vacía toda la caché de build sin uso del host. Hoy solo Contikids construye imágenes aquí.
+  - El precio: cada rebuild vuelve a bajar los paquetes (~1 min más).
+- Se quitó el script raíz `"deploy"` del `package.json`: chocaba con el comando `pnpm deploy`.
 - ✅ Webhook de GitHub **activo** (2026-11-18): Pedro lo configuró y el ping llegó (✔ 200 `pong`, 03:04:55 UTC).
 - ✅ **Auto-deploy probado** con el commit `aede9a2`:
   - push → webhook (03:07:49 UTC) → `deploy.sh` → build api (1 min 31 s) → build web (34 s) → up → health OK → sin seed (la BD ya tenía datos) → limpieza → **✅ Deploy COMPLETO** (03:10:18 UTC, ~2.5 min).
@@ -21,7 +42,8 @@
   - Health: `/api/v1/health` · Swagger: `/api/docs`.
 - **Contenedores de producción** (`docker-compose.yml`, un solo archivo para VPS y laptop):
   - `contikids-postgres`: `postgres:16-alpine`, `127.0.0.1:5433`, 256 MB.
-  - `contikids-api`: imagen `contikids-api` (multi-stage, node:22-alpine, usuario `node`). Al arrancar corre `prisma migrate deploy` y luego la API. **No se publica.** 384 MB.
+  - `contikids-migrate`: imagen `contikids-migrate` (runtime + CLI de Prisma). Corre `prisma migrate deploy` y termina (queda "Exited (0)").
+  - `contikids-api`: imagen `contikids-api` (271 MB; runtime Alpine + Node 22, usuario `node`). Arranca después de `migrate`. **No se publica.** 384 MB de límite.
   - `contikids-web`: imagen `contikids-web` (build de Vite → `nginx:alpine`), publicada en `${WEB_BIND}:${WEB_PORT}`, que en el VPS es **172.18.0.1:4400**. 64 MB.
     - Nginx (`infra/nginx/contikids.conf`): proxy `/api` → `api:4410`, fallback SPA, gzip, cache larga en `/assets` y `noindex`.
   - El seed se compila a `dist-seed/` dentro de la imagen de la api: `docker compose run --rm api node dist-seed/seed.js`.
@@ -73,6 +95,7 @@
 **De Pedro:**
 - [x] Configurar el webhook en GitHub (hecho 2026-11-18; ping ✔). El secreto está solo en el `.env` del VPS.
 - [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/`.
+- [ ] Decidir qué proyectos viejos de Outlier se borran y las otras propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
 - [ ] Dar el **OK para la Fase 1**.
 
 **Inicio de la Fase 1 (decidido por Pedro):**
@@ -80,7 +103,6 @@
 - [ ] Después: nueva migración + seed con `upsert` en esos modelos.
 
 **Mejoras anotadas (sin urgencia):**
-- [ ] La imagen de la api pesa 697 MB: se puede adelgazar (podar devDeps/engines que sobran).
 - [ ] Desarrollo y producción comparten la misma BD (`contikids-postgres`). Si la demo necesita datos limpios, separar.
 
 **Equipo de Contenido:**
@@ -120,7 +142,8 @@ Nada de Contikids escucha en `0.0.0.0`. Ojo: `pnpm dev:api` y la api de producci
 ## Operación rápida
 - Deploy manual: `cd /root/Contikids-Project && ./deploy.sh`
 - Logs: `tail -f /root/logs/contikids-deploy.log` · `tail -f /root/logs/contikids-webhook.log` · `docker logs -f contikids-api`
-- Rollback: `docker tag contikids-api:previous contikids-api:latest && docker tag contikids-web:previous contikids-web:latest && docker compose up -d`
+- Rollback: `for i in migrate api web; do docker tag contikids-$i:previous contikids-$i:latest; done && docker compose up -d`
+- Forzar rebuild: `FORCE_REBUILD=1 ./deploy.sh` (por defecto, un push con solo docs no reconstruye).
 - PIN de demo: se imprimieron en el primer seed. Para regenerarlos: `SEED_RESET_DEMO_PINS=1 pnpm db:seed`.
 - CI: pestaña **Actions** de GitHub (`gh` no está instalado en el VPS).
 
