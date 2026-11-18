@@ -6,7 +6,7 @@
 ## Estado al 2026-11-18
 
 **Dónde quedamos:** la Fase 0.5 (despliegue) está **terminada y en vivo** en https://contikids.pedroservicios.xyz.
-- Falta que Pedro configure el webhook en GitHub y que se pruebe el auto-deploy con un commit pequeño.
+- ✅ Webhook de GitHub **activo** (2026-11-18): Pedro lo configuró y el ping llegó (✔ 200 `pong`, 03:04:55 UTC). Este commit es la prueba del auto-deploy.
 - La Fase 1 **NO se empieza hasta su OK**.
 
 ### ✅ Fase 0.5 — Despliegue (terminada; falta la prueba del webhook)
@@ -65,7 +65,7 @@
 
 ### ⏳ Pendiente
 **De Pedro:**
-- [ ] Configurar el webhook en GitHub (instrucciones en el chat; el secreto **solo** en el chat y en el `.env`). Luego Claude lo prueba con un commit pequeño y muestra el log.
+- [x] Configurar el webhook en GitHub (hecho 2026-11-18; ping ✔). El secreto está solo en el `.env` del VPS.
 - [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/`.
 - [ ] Dar el **OK para la Fase 1**.
 
