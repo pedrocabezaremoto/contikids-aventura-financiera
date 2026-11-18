@@ -26,16 +26,35 @@ services:
       start_period: 10s
     mem_limit: 256m
 
+  # Corre `prisma migrate deploy` y termina. La api arranca solo si las migraciones salieron bien.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    image: contikids-migrate:latest
+    container_name: contikids-migrate
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    mem_limit: 256m
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      target: runtime
     image: contikids-api:latest
     container_name: contikids-api
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
