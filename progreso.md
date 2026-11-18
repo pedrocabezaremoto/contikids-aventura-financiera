@@ -158,12 +158,12 @@
 **De Pedro:**
 - [x] Configurar el webhook en GitHub (hecho 2026-11-18; ping ✔). El secreto está solo en el `.env` del VPS.
 - [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/`.
-- [ ] Mañana: confirmar la limpieza del VPS y las propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
+- [ ] Probar la Fase 1 en el dominio con las credenciales demo (se dieron por chat).
+- [ ] Más adelante: confirmar la limpieza del VPS y las propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
 - [ ] Dar el **OK para la Fase 2**.
 
-**Inicio de la Fase 1 (decidido por Pedro):**
-- [ ] Primero actualizar la §8 del contexto a **v1.2** con claves únicas en `Lesson(moduleId, order)`, `Quiz(moduleId, type)`, `Question(quizId, order)` y `ContentBlock(lessonId, order)`.
-- [ ] Después: nueva migración + seed con `upsert` en esos modelos.
+**Fase 1 (hecho):**
+- [x] §8 del contexto a **v1.2** con claves únicas + migración + seed con `upsert`.
 
 **Mejoras anotadas (sin urgencia):**
 - [ ] Desarrollo y producción comparten la misma BD (`contikids-postgres`). Si la demo necesita datos limpios, separar.
@@ -207,11 +207,20 @@ Nada de Contikids escucha en `0.0.0.0`. Ojo: `pnpm dev:api` y la api de producci
 - Logs: `tail -f /root/logs/contikids-deploy.log` · `tail -f /root/logs/contikids-webhook.log` · `docker logs -f contikids-api`
 - Rollback: `for i in migrate api web; do docker tag contikids-$i:previous contikids-$i:latest; done && docker compose up -d`
 - Forzar rebuild: `FORCE_REBUILD=1 ./deploy.sh` (por defecto, un push con solo docs no reconstruye).
-- PIN de demo: se imprimieron en el primer seed. Para regenerarlos: `SEED_RESET_DEMO_PINS=1 pnpm db:seed`.
+- Credenciales demo: docente `docente@contikids.test` (contraseña = `SEED_TEACHER_PASSWORD` del `.env`), sección `DEMO-5A`. Los PIN se imprimieron en el primer seed y se pasaron por chat; para regenerarlos: `SEED_RESET_DEMO_PINS=1 pnpm db:seed`.
+- Desbloquear un alumno a mano (si se pasa de intentos): esperar `pinLockMinutes` (5 min) o `docker compose exec postgres psql -U contikids -d contikids -c 'UPDATE "Student" SET "lockedUntil"=NULL, "failedPinCount"=0 WHERE username=...'`.
+- Probar la API: Swagger en https://contikids.pedroservicios.xyz/api/docs · estado técnico en `/estado`.
 - CI: pestaña **Actions** de GitHub (`gh` no está instalado en el VPS).
 
+## Estado del entorno al pausar (2026-11-18, 07:30 Caracas)
+- En vivo: `contikids-postgres`, `contikids-api` y `contikids-web` (healthy); `contikids-migrate` terminó con 0. Último deploy: `44c679f` (solo docs, sin rebuild); último build completo: `f3bbae9`.
+- El webhook `contikids-webhook` (PM2) sigue activo: cada push a `main` despliega solo.
+- No queda ningún servidor de desarrollo corriendo (la API y Vite de prueba se apagaron con `timeout`).
+- El alumno demo "Gabriel" quedó bloqueado a propósito por la prueba de bloqueo; se desbloquea solo a los 5 minutos (07:31).
+- Disco ~72 %, swap 2 GB.
+
 ## Notas para el mockup → app
-- Waddles como asset en `apps/web/src/assets` (no base64).
+- ✅ Waddles y el logo ya están como archivos en `apps/web/src/assets` (no base64).
 - Fuentes self-hosted (el mockup usa Google Fonts).
 - Validación del asiento en el backend (el mockup valida en el navegador).
 - Los bloques `diagram` del seed usan la notación del prototipo (`COIN`, `PIG`, `@g/@r/@b`); el render se hace en la Fase 2.
