@@ -11,6 +11,7 @@
   - push → webhook (03:07:49 UTC) → `deploy.sh` → build api (1 min 31 s) → build web (34 s) → up → health OK → sin seed (la BD ya tenía datos) → limpieza → **✅ Deploy COMPLETO** (03:10:18 UTC, ~2.5 min).
   - Después del deploy, las 4 páginas de Pedro seguían igual (www 200, fresh 200, api 404, inmoya 200).
 - **Desde ahora, cada push a `main` despliega solo** (también los commits de Claude al cerrar cada fase).
+- Desde `aede2c2`: si un push solo cambia docs (`*.md`, `docs/**`, `progreso.md`), `deploy.sh` hace pull y **no reconstruye** (este commit es la prueba).
 - La Fase 1 **NO se empieza hasta su OK**.
 
 ### ✅ Fase 0.5 — Despliegue (terminada y probada)
