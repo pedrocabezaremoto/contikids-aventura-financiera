@@ -6,7 +6,23 @@
 ## Estado al 2026-11-18
 
 **Dónde quedamos:** la Fase 0.5 está **aprobada** y el mantenimiento previo a la Fase 1 está hecho. Lo próximo es la Fase 1, **solo con el OK de Pedro**.
-- Pedro debe decidir qué proyectos viejos de Outlier se borran (inventario privado en `/root/reporte-limpieza.md`, fuera del repo).
+- Pausa hasta el 2026-11-19: ver **Plan para mañana** abajo.
+
+## 🗓️ Plan para mañana (2026-11-19) — en este orden, cada paso con el OK de Pedro
+> Pausa decidida por Pedro el 2026-11-18. Lo que tiene nombres de proyectos ajenos o detalles de seguridad del servidor está en `/root/reporte-limpieza.md` (privado, fuera del repo).
+
+1. **Limpieza del VPS** (decisiones de Pedro, detalle en `/root/reporte-limpieza.md`):
+   - Borrar las carpetas viejas ya decididas, respaldando antes en GitHub lo que falte.
+   - Una carpeta se decide mañana (respaldar o borrar directo).
+   - Confirmar las propuestas de disco: caché de npm (3.9 GB), `git gc` en `/root/.git` (895 MB), logs rotados y límite `SystemMaxUse=200M` en journald.
+2. **Seguridad del servidor:** una tarea de endurecimiento de puertos (detalle en `/root/reporte-limpieza.md`).
+3. **Fase 1 — Acceso:**
+   - Primero:
+     - §8 del contexto a **v1.2** con claves únicas en `Lesson(moduleId, order)`, `Quiz(moduleId, type)`, `Question(quizId, order)` y `ContentBlock(lessonId, order)`;
+     - nueva migración;
+     - seed con `upsert` en esos modelos.
+   - Después: bienvenida (¿Docente o Estudiante?), login docente, código de sección + perfiles + PIN, y guards por rol.
+   - **Modo claro por defecto.** El modo oscuro solo se activa si el niño lo elige en Ajustes, nunca automático. Hoy `apps/web/src/styles/index.css` usa `prefers-color-scheme: dark` y hay que cambiarlo a una clase/atributo que se active desde Ajustes.
 
 ### ✅ Mantenimiento antes de la Fase 1 (2026-11-18)
 - **Disco: 83 % → 72 %.**
@@ -95,7 +111,7 @@
 **De Pedro:**
 - [x] Configurar el webhook en GitHub (hecho 2026-11-18; ping ✔). El secreto está solo en el `.env` del VPS.
 - [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/`.
-- [ ] Decidir qué proyectos viejos de Outlier se borran y las otras propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
+- [ ] Mañana: confirmar la limpieza del VPS y las propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
 - [ ] Dar el **OK para la Fase 1**.
 
 **Inicio de la Fase 1 (decidido por Pedro):**
