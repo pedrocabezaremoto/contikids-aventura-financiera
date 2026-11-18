@@ -1,4 +1,4 @@
-// Schema de CONTIKIDS — copia EXACTA de docs/CONTIKIDS_CONTEXTO_LLM.md §8 (v1.1).
+// Schema de CONTIKIDS — copia EXACTA de docs/CONTIKIDS_CONTEXTO_LLM.md §8 (v1.2).
 // Si cambias algo aquí, actualiza primero el documento de contexto.
 
 generator client {
@@ -101,6 +101,7 @@ model Lesson {
   title     String
   blocks    ContentBlock[]
   module    LearningModule @relation(fields: [moduleId], references: [id])
+  @@unique([moduleId, order])
 }
 
 model ContentBlock {
@@ -111,6 +112,7 @@ model ContentBlock {
   text      String?
   assetPath String?
   lesson    Lesson  @relation(fields: [lessonId], references: [id])
+  @@unique([lessonId, order])
 }
 
 model Quiz {
@@ -121,6 +123,7 @@ model Quiz {
   questions Question[]
   module    LearningModule @relation(fields: [moduleId], references: [id])
   attempts  Attempt[]
+  @@unique([moduleId, type])
 }
 
 model Question {
@@ -135,6 +138,7 @@ model Question {
   quiz        Quiz     @relation(fields: [quizId], references: [id])
   options     AnswerOption[]
   answers     AttemptAnswer[]
+  @@unique([quizId, order])
 }
 
 model AnswerOption {

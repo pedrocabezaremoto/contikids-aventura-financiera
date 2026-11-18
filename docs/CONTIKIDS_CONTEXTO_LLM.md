@@ -5,6 +5,7 @@
 > Responde y comenta el código en **español**; nombres de código (variables, funciones, tablas) en **inglés**.
 
 ### Historial de cambios
+- **v1.2 (2026-11-18):** claves únicas `Lesson(moduleId, order)`, `ContentBlock(lessonId, order)`, `Quiz(moduleId, type)` y `Question(quizId, order)` (el seed usa `upsert`; un módulo tiene a lo sumo un QUIZ y un EXAM).
 - **v1.1 (2026-11-17):** `Section.code`; nuevo modelo `Scenario` (agrupa las operaciones de una historia); intentos del Libro Diario en `JournalAttempt` (solo los asientos correctos son `JournalEntry`); Mayor y Balance calculados solo con asientos correctos del escenario; relación `PlaySession → LearningModule`; códigos de cuenta cortos (`1.1`, `4.1`); desafío final = **6 operaciones**; todos los ejemplos en **Bs.**
 - **v1.0 (2026-11-16):** versión inicial.
 
@@ -320,6 +321,7 @@ model Lesson {
   title     String
   blocks    ContentBlock[]
   module    LearningModule @relation(fields: [moduleId], references: [id])
+  @@unique([moduleId, order])
 }
 
 model ContentBlock {
@@ -330,6 +332,7 @@ model ContentBlock {
   text      String?
   assetPath String?
   lesson    Lesson  @relation(fields: [lessonId], references: [id])
+  @@unique([lessonId, order])
 }
 
 model Quiz {
@@ -340,6 +343,7 @@ model Quiz {
   questions Question[]
   module    LearningModule @relation(fields: [moduleId], references: [id])
   attempts  Attempt[]
+  @@unique([moduleId, type])
 }
 
 model Question {
@@ -354,6 +358,7 @@ model Question {
   quiz        Quiz     @relation(fields: [quizId], references: [id])
   options     AnswerOption[]
   answers     AttemptAnswer[]
+  @@unique([quizId, order])
 }
 
 model AnswerOption {

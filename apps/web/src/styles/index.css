@@ -30,20 +30,23 @@
   --shadow-card: 0 6px 0 rgba(6, 24, 89, 0.18);
 }
 
-/* Modo oscuro (§5): se redefinen los tokens de fondo y texto. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-sky-a: #14307a;
-    --color-sky-b: #0a1238;
-    --color-card: #1b2a63;
-    --color-ink: #f2f6ff;
-    --color-muted: #b8c3e6;
-  }
+/* MODO CLARO POR DEFECTO. El oscuro (§5) solo se activa si el niño lo elige en Ajustes,
+   que pondrá data-theme="dark" en <html>. Nunca automático por prefers-color-scheme. */
+:root[data-theme='dark'] {
+  --color-sky-a: #14307a;
+  --color-sky-b: #0a1238;
+  --color-card: #1b2a63;
+  --color-ink: #f2f6ff;
+  --color-muted: #b8c3e6;
 }
 
 @layer base {
   html {
     font-size: 18px;
+    color-scheme: light;
+  }
+  a {
+    text-decoration: none;
   }
   body {
     @apply min-h-dvh font-body font-semibold text-ink;
@@ -92,6 +95,23 @@
     --btn-bg: var(--color-red);
     --btn-shadow: var(--color-red-shadow);
   }
+}
+
+/* Waddles "se mueve" cuando algo sale mal (sin castigar). */
+@keyframes wiggle {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  25% {
+    rotate: -8deg;
+  }
+  75% {
+    rotate: 8deg;
+  }
+}
+@utility animate-wiggle {
+  animation: wiggle 0.4s ease-in-out 2;
 }
 
 @media (prefers-reduced-motion: reduce) {

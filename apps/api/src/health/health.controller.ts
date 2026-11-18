@@ -1,4 +1,5 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiServiceUnavailableResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -9,6 +10,7 @@ export interface HealthStatus {
 }
 
 @ApiTags('health')
+@SkipThrottle()
 @Controller({ path: 'health', version: '1' })
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}

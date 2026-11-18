@@ -1,6 +1,6 @@
 # CONTIKIDS — Progreso
 
-> Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.1).
+> Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.2).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
 ## Estado al 2026-11-18

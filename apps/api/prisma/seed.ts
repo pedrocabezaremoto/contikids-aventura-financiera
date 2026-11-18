@@ -2,9 +2,8 @@
  * Seed idempotente de CONTIKIDS: correrlo varias veces NO duplica nada.
  *
  * - Modelos con clave única → upsert.
- * - Lesson / ContentBlock / Quiz / Question / AnswerOption no tienen clave única en el
- *   schema (§8), así que se buscan por su "clave natural" (módulo+orden, quiz+orden, etc.)
- *   y se actualizan o crean.
+ * - Desde §8 v1.2, Lesson / ContentBlock / Quiz / Question también usan upsert por su
+ *   clave única. AnswerOption no tiene clave única: se busca por (pregunta, texto).
  * - Los PIN de demo se generan al crear cada alumno y se imprimen SOLO en consola.
  *   Con SEED_RESET_DEMO_PINS=1 se regeneran.
  */
@@ -67,22 +66,19 @@ async function seedModules(): Promise<Record<ModuleCode, number>> {
 async function seedLessons(moduleIds: Record<ModuleCode, number>) {
   for (const l of LESSONS) {
     const moduleId = moduleIds[l.module];
-    const lesson = await findOrCreate(
-      () => prisma.lesson.findFirst({ where: { moduleId, order: l.order } }),
-      (id) => prisma.lesson.update({ where: { id }, data: { title: l.title } }),
-      () => prisma.lesson.create({ data: { moduleId, order: l.order, title: l.title } }),
-    );
+    const lesson = await prisma.lesson.upsert({
+      where: { moduleId_order: { moduleId, order: l.order } },
+      update: { title: l.title },
+      create: { moduleId, order: l.order, title: l.title },
+    });
 
     for (const [i, b] of l.blocks.entries()) {
       const order = i + 1;
-      await findOrCreate(
-        () => prisma.contentBlock.findFirst({ where: { lessonId: lesson.id, order } }),
-        (id) => prisma.contentBlock.update({ where: { id }, data: { kind: b.kind, text: b.text } }),
-        () =>
-          prisma.contentBlock.create({
-            data: { lessonId: lesson.id, order, kind: b.kind, text: b.text },
-          }),
-      );
+      await prisma.contentBlock.upsert({
+        where: { lessonId_order: { lessonId: lesson.id, order } },
+        update: { kind: b.kind, text: b.text },
+        create: { lessonId: lesson.id, order, kind: b.kind, text: b.text },
+      });
     }
   }
 }
@@ -90,11 +86,11 @@ async function seedLessons(moduleIds: Record<ModuleCode, number>) {
 async function seedQuizzes(moduleIds: Record<ModuleCode, number>) {
   for (const q of QUIZZES) {
     const moduleId = moduleIds[q.module];
-    const quiz = await findOrCreate(
-      () => prisma.quiz.findFirst({ where: { moduleId, type: q.type } }),
-      (id) => prisma.quiz.update({ where: { id }, data: { title: q.title } }),
-      () => prisma.quiz.create({ data: { moduleId, type: q.type, title: q.title } }),
-    );
+    const quiz = await prisma.quiz.upsert({
+      where: { moduleId_type: { moduleId, type: q.type } },
+      update: { title: q.title },
+      create: { moduleId, type: q.type, title: q.title },
+    });
 
     for (const qs of q.questions) {
       const data = {
@@ -104,12 +100,13 @@ async function seedQuizzes(moduleIds: Record<ModuleCode, number>) {
         explanation: qs.explanation,
         payload: qs.payload ? (qs.payload as Prisma.InputJsonValue) : Prisma.JsonNull,
       };
-      const question = await findOrCreate(
-        () => prisma.question.findFirst({ where: { quizId: quiz.id, order: qs.order } }),
-        (id) => prisma.question.update({ where: { id }, data }),
-        () => prisma.question.create({ data: { ...data, quizId: quiz.id, order: qs.order } }),
-      );
+      const question = await prisma.question.upsert({
+        where: { quizId_order: { quizId: quiz.id, order: qs.order } },
+        update: data,
+        create: { ...data, quizId: quiz.id, order: qs.order },
+      });
 
+      // AnswerOption no tiene clave única en §8: se busca por (pregunta, texto).
       for (const opt of qs.options ?? []) {
         await findOrCreate(
           () =>

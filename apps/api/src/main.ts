@@ -1,16 +1,23 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NextFunction, Request, Response } from 'express';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 const DOCS_PATH = 'api/docs';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  // Detrás de Traefik + Nginx (IPs privadas): req.ip = IP real del cliente (para el rate limit).
+  app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+  // Lee el cookie httpOnly del refresh token.
+  app.use(cookieParser());
 
   // Rutas: /api/v1/...
   app.setGlobalPrefix('api');
