@@ -5,11 +5,15 @@
 
 ## Estado al 2026-11-18
 
-**Dónde quedamos:** la Fase 0.5 (despliegue) está **terminada y en vivo** en https://contikids.pedroservicios.xyz.
-- ✅ Webhook de GitHub **activo** (2026-11-18): Pedro lo configuró y el ping llegó (✔ 200 `pong`, 03:04:55 UTC). Este commit es la prueba del auto-deploy.
+**Dónde quedamos:** la Fase 0.5 (despliegue) está **terminada, en vivo y con auto-deploy probado** en https://contikids.pedroservicios.xyz. Lo próximo es la Fase 1, **solo con el OK de Pedro**.
+- ✅ Webhook de GitHub **activo** (2026-11-18): Pedro lo configuró y el ping llegó (✔ 200 `pong`, 03:04:55 UTC).
+- ✅ **Auto-deploy probado** con el commit `aede9a2`:
+  - push → webhook (03:07:49 UTC) → `deploy.sh` → build api (1 min 31 s) → build web (34 s) → up → health OK → sin seed (la BD ya tenía datos) → limpieza → **✅ Deploy COMPLETO** (03:10:18 UTC, ~2.5 min).
+  - Después del deploy, las 4 páginas de Pedro seguían igual (www 200, fresh 200, api 404, inmoya 200).
+- **Desde ahora, cada push a `main` despliega solo** (también los commits de Claude al cerrar cada fase).
 - La Fase 1 **NO se empieza hasta su OK**.
 
-### ✅ Fase 0.5 — Despliegue (terminada; falta la prueba del webhook)
+### ✅ Fase 0.5 — Despliegue (terminada y probada)
 - **En vivo:** https://contikids.pedroservicios.xyz
   - HTTPS de Let's Encrypt (vence 2027-02-16, Traefik lo renueva solo); http → https (308).
   - Cabecera `X-Robots-Tag: noindex, nofollow`.
@@ -39,7 +43,8 @@
 - **Las 4 páginas de Pedro, antes → después:** www 200→200 · fresh 200→200 · api 404→404 (su backend no tiene ruta `/`) · inmoya 200→200.
 - **Recursos tras el deploy:**
   - RAM: postgres 37 MB, api 40 MB, web 5 MB; 4.3 GB disponibles.
-  - Disco al **82 %** (antes 75 %): imágenes (+1.2 GB), caché de build (1.3 GB) y store de pnpm. ⚠️ Vigilar el 85 %.
+  - Disco al **83 %** (antes 75 %): imágenes (+1.2 GB), caché de build (~1.8 GB) y store de pnpm. ⚠️ Vigilar el 85 %.
+  - Durante un build, el swap llega a ~1.2 GB (normal: para eso se agregó). La caché queda en ~1.8 GB aunque el tope de `deploy.sh` es 1 GB, porque Docker cuenta aparte la parte en uso.
 
 ### ✅ Fase 0 — Base (APROBADA)
 - **Commit `040fe62` — docs:** referencias de diseño (HTML del equipo + diagramas de casos de uso y ER).
@@ -104,7 +109,7 @@ Nada de Contikids escucha en `0.0.0.0`. Ojo: `pnpm dev:api` y la api de producci
 
 ## Fases (§14 del contexto)
 - [x] **Fase 0 — Base** (2026-11-18, aprobada).
-- [x] **Fase 0.5 — Despliegue** (2026-11-18): en vivo; falta la prueba del webhook con GitHub.
+- [x] **Fase 0.5 — Despliegue** (2026-11-18): en vivo, con auto-deploy por webhook probado.
 - [ ] Fase 1 — Acceso (bienvenida, login docente, código de sección + perfiles + PIN, guards).
 - [ ] Fase 2 — Estudiante (mapa, lección, quiz, prueba, monedas/XP/medallas, M1 completo).
 - [ ] Fase 3 — Simulador contable (Diario, Mayor, Balance por escenario).
