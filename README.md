@@ -30,6 +30,15 @@ pnpm dev:web                  # Web en http://127.0.0.1:5173
 
 Todo escucha solo en `127.0.0.1`. Para verlo desde tu PC, usa el reenvío de puertos de VS Code (puertos 5173 y 4410).
 
+## Producción
+
+- En vivo (pruebas): https://contikids.pedroservicios.xyz (`noindex`).
+- `docker-compose.yml` levanta `postgres`, `api` (no publicada) y `web` (Nginx con el build de Vite + proxy `/api`).
+  - VPS: `WEB_BIND=172.18.0.1`, `WEB_PORT=4400`, y Traefik enruta el dominio con `infra/traefik/contikids.yaml`.
+  - Laptop sin internet: `WEB_BIND=127.0.0.1`, `WEB_PORT=80`, `PUBLIC_URL=http://localhost` → `./deploy.sh` (o `docker compose up -d`) y abrir http://localhost.
+- `./deploy.sh`: pull → build api → build web → up → health → seed si la BD está vacía → limpieza. Log en `/root/logs/contikids-deploy.log`.
+- Auto-deploy: cada push a `main` llega al webhook (`infra/webhook/`, proceso PM2 `contikids-webhook`), que verifica la firma de GitHub y corre `deploy.sh`.
+
 ## Calidad
 
 ```bash

@@ -1,0 +1,56 @@
+{
+  "http": {
+    "routers": {
+      "http-contikids-0": {
+        "service": "contikids-web-0",
+        "rule": "Host(`contikids.pedroservicios.xyz`) && PathPrefix(`/`)",
+        "priority": 0,
+        "middlewares": ["redirect-to-https", "bad-gateway-error-page"],
+        "entryPoints": ["http"]
+      },
+      "https-contikids-0": {
+        "service": "contikids-web-0",
+        "rule": "Host(`contikids.pedroservicios.xyz`) && PathPrefix(`/`)",
+        "priority": 0,
+        "middlewares": ["bad-gateway-error-page"],
+        "tls": {
+          "certResolver": "letsencrypt",
+          "domains": [{ "main": "contikids.pedroservicios.xyz" }]
+        },
+        "entryPoints": ["https"]
+      },
+      "http-contikids-webhook-0": {
+        "service": "contikids-webhook-0",
+        "rule": "Host(`contikids.pedroservicios.xyz`) && PathPrefix(`/deploy-hook`)",
+        "priority": 100,
+        "middlewares": ["redirect-to-https", "bad-gateway-error-page"],
+        "entryPoints": ["http"]
+      },
+      "https-contikids-webhook-0": {
+        "service": "contikids-webhook-0",
+        "rule": "Host(`contikids.pedroservicios.xyz`) && PathPrefix(`/deploy-hook`)",
+        "priority": 100,
+        "middlewares": ["bad-gateway-error-page"],
+        "tls": {
+          "certResolver": "letsencrypt",
+          "domains": [{ "main": "contikids.pedroservicios.xyz" }]
+        },
+        "entryPoints": ["https"]
+      }
+    },
+    "services": {
+      "contikids-web-0": {
+        "loadBalancer": {
+          "servers": [{ "url": "http://172.18.0.1:4400/" }],
+          "passHostHeader": true
+        }
+      },
+      "contikids-webhook-0": {
+        "loadBalancer": {
+          "servers": [{ "url": "http://172.18.0.1:4420/" }],
+          "passHostHeader": true
+        }
+      }
+    }
+  }
+}

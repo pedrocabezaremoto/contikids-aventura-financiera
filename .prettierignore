@@ -6,3 +6,5 @@ docs
 files-htmlsANDother
 apps/api/prisma/migrations
 *.md
+dist-seed
+infra/traefik

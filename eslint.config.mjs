@@ -11,6 +11,7 @@ export default defineConfig(
   {
     ignores: [
       '**/dist/**',
+      '**/dist-seed/**',
       '**/node_modules/**',
       '**/coverage/**',
       'docs/**',
@@ -30,8 +31,19 @@ export default defineConfig(
     },
   },
   {
-    files: ['apps/api/**/*.ts', 'packages/**/*.ts', '*.{js,mjs,cjs}', 'apps/*/*.{js,mjs,cjs,ts}'],
+    files: [
+      'apps/api/**/*.ts',
+      'packages/**/*.ts',
+      'infra/**/*.{js,mjs,cjs}',
+      '*.{js,mjs,cjs}',
+      'apps/*/*.{js,mjs,cjs,ts}',
+    ],
     languageOptions: { globals: globals.node },
+  },
+  {
+    // Archivos CommonJS (p. ej. ecosystem de PM2): require() es lo correcto aquí.
+    files: ['**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   prettier,
 );

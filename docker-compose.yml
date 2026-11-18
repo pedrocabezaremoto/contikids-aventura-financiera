@@ -1,5 +1,7 @@
-# Fase 0: solo la base de datos propia de Contikids.
-# La API y la web en contenedores (producción) llegan en la Fase 0.5.
+# CONTIKIDS — un solo compose para el VPS y para la laptop de la demo.
+#   VPS:    WEB_BIND=172.18.0.1  WEB_PORT=4400  (solo lo alcanza Traefik)
+#   Laptop: WEB_BIND=127.0.0.1   WEB_PORT=80    → http://localhost
+# Desarrollo (pnpm dev): basta con `docker compose up -d postgres`.
 name: contikids
 
 services:
@@ -23,6 +25,53 @@ services:
       retries: 5
       start_period: 10s
     mem_limit: 256m
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: contikids-api:latest
+    container_name: contikids-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      # 0.0.0.0 DENTRO del contenedor: la api no se publica al host, solo la ve la red del compose.
+      API_HOST: 0.0.0.0
+      API_PORT: 4410
+      CORS_ORIGIN: ${PUBLIC_URL:-http://localhost}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+    # Sin "ports": la api NO se publica.
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:4410/api/v1/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 384m
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: contikids-web:latest
+    container_name: contikids-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${WEB_BIND:-127.0.0.1}:${WEB_PORT:-80}:80'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/ >/dev/null || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 64m
 
 volumes:
   pgdata:
