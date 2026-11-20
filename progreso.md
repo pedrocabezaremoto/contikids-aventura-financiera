@@ -3,6 +3,27 @@
 > Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.2).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
+## Estado al 2026-11-20 (Fase 2 planificada, esperando OK de Pedro para la 2.1)
+
+**Dónde quedamos:** la Fase 2 está **planificada en `docs/FASE2_PLAN.md`**. Todavía no hay código ni migraciones.
+- **Sub-fases:**
+  - 2.1 Mapa de islas: con la migración §8 → v1.3.
+  - 2.2 Lección.
+  - 2.3 Quiz con pista y reintento.
+  - 2.4 Prueba, desbloqueo y medalla.
+  - 2.5 Recompensas y perfil.
+  - 2.6 M1 completo, con contenido provisional y progreso demo.
+  - 2.7 Tiempo de juego (opcional).
+- **Schema v1.3 propuesto** (aditivo, una sola migración en la 2.1):
+  - `AttemptAnswer.tryNumber`;
+  - `Attempt.stars`;
+  - `SubmoduleProgress.bestStars`;
+  - `AnswerOption.order` con clave única;
+  - tabla nueva `RewardGrant` (premios idempotentes).
+- **Hallazgo:** el rate limit va por IP. En un aula detrás de un mismo NAT bloquearía a los niños (duda 6 del plan).
+- **Pendiente de Pedro:** responder las 13 dudas de §5 del plan (o "OK a todo" con las recomendadas) y dar el **OK para la 2.1**.
+- Contenido provisional de M1 propuesto en §4.1 del plan, para que lo revise el Equipo de Contenido.
+
 ## Estado al 2026-11-18 (Fase 1 terminada)
 
 **Dónde quedamos:** la **Fase 1 — Acceso** está en vivo y probada en https://contikids.pedroservicios.xyz (commit `f3bbae9`).
@@ -160,7 +181,7 @@
 - [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/`.
 - [ ] Probar la Fase 1 en el dominio con las credenciales demo (se dieron por chat).
 - [ ] Más adelante: confirmar la limpieza del VPS y las propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
-- [ ] Dar el **OK para la Fase 2**.
+- [ ] Responder las dudas de `docs/FASE2_PLAN.md` §5 y dar el **OK para la 2.1**.
 
 **Fase 1 (hecho):**
 - [x] §8 del contexto a **v1.2** con claves únicas + migración + seed con `upsert`.
@@ -197,7 +218,7 @@ Nada de Contikids escucha en `0.0.0.0`. Ojo: `pnpm dev:api` y la api de producci
 - [x] **Fase 0 — Base** (2026-11-18, aprobada).
 - [x] **Fase 0.5 — Despliegue** (2026-11-18): en vivo, con auto-deploy por webhook probado.
 - [x] **Fase 1 — Acceso** (2026-11-18): en vivo y probada.
-- [ ] Fase 2 — Estudiante (mapa, lección, quiz, prueba, monedas/XP/medallas, M1 completo).
+- [ ] Fase 2 — Estudiante (mapa, lección, quiz, prueba, monedas/XP/medallas, M1 completo). **Planificada** (2026-11-20): `docs/FASE2_PLAN.md`, sub-fases 2.1–2.7.
 - [ ] Fase 3 — Simulador contable (Diario, Mayor, Balance por escenario).
 - [ ] Fase 4 — Docente (KPIs, CRUD alumnos, progreso, tiempos, reportes).
 - [ ] Fase 5 — Pulido (PWA offline, sonidos, modo oscuro, pruebas 360px).
