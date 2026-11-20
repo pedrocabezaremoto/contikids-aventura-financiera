@@ -9,15 +9,17 @@
     "start": "node dist/main.js",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "test": "jest --selectProjects unit",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
-    "db:studio": "dotenv -e ../../.env -- prisma studio --browser none --port 5555"
+    "db:studio": "dotenv -e ../../.env -- prisma studio --browser none --port 5555",
+    "test:int": "dotenv -e ../../.env -- jest --runInBand --selectProjects integration"
   },
   "dependencies": {
+    "@contikids/shared": "workspace:*",
     "@nestjs/common": "^11.1.0",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.0",
@@ -37,6 +39,7 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.2.11",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
@@ -47,18 +50,5 @@
     "ts-jest": "^29.4.5",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3"
-  },
-  "jest": {
-    "rootDir": "src",
-    "testEnvironment": "node",
-    "testRegex": ".*\\.spec\\.ts$",
-    "moduleFileExtensions": [
-      "ts",
-      "js",
-      "json"
-    ],
-    "transform": {
-      "^.+\\.ts$": "ts-jest"
-    }
   }
 }

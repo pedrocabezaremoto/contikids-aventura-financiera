@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
+import { RATE_LIMITS, RATE_WINDOW_MS } from '../rate-limit/rate-limits';
+import { RateScope } from '../rate-limit/rate-scope';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { CookieOptions, Request, Response } from 'express';
 import { SectionQueryDto, StudentLoginDto, TeacherLoginDto } from './auth.dto';
@@ -24,9 +26,6 @@ import {
   type LoginResult,
   type TokenPayload,
 } from './auth.types';
-
-/** Límite de intentos de login por IP: 10 por minuto. */
-const LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -60,20 +59,22 @@ export class AuthController {
 
   @Post('teacher/login')
   @HttpCode(200)
-  @Throttle(LOGIN_THROTTLE)
+  @Throttle({ ip: { limit: RATE_LIMITS.teacherLoginPerIp, ttl: RATE_WINDOW_MS } })
   async teacherLogin(@Body() dto: TeacherLoginDto, @Res({ passthrough: true }) res: Response) {
     return this.respond(res, await this.auth.teacherLogin(dto.email, dto.password));
   }
 
   @Get('students')
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @RateScope('sectionProfiles') // por sección (60/min)…
+  @Throttle({ ip: { limit: RATE_LIMITS.profilesPerIp, ttl: RATE_WINDOW_MS } }) // …y por IP, alto
   listStudents(@Query() q: SectionQueryDto) {
     return this.auth.listStudents(q.sectionCode);
   }
 
   @Post('student/login')
   @HttpCode(200)
-  @Throttle(LOGIN_THROTTLE)
+  @RateScope('studentLogin') // por alumno (10/min)…
+  @Throttle({ ip: { limit: RATE_LIMITS.studentLoginPerIp, ttl: RATE_WINDOW_MS } }) // …y por IP, alto
   async studentLogin(@Body() dto: StudentLoginDto, @Res({ passthrough: true }) res: Response) {
     return this.respond(res, await this.auth.studentLogin(dto.studentId, dto.pin));
   }
@@ -105,13 +106,6 @@ export class MeController {
     const found = await this.auth.userFor(user);
     if (!found) throw new NotFoundException('Usuario no encontrado');
     return found;
-  }
-
-  /** Destino provisional del estudiante (Fase 2: mapa). Solo rol STUDENT. */
-  @Get('student/home')
-  @Roles('STUDENT')
-  studentHome(@CurrentUser() user: TokenPayload) {
-    return { role: user.role, message: 'Tu mapa llega pronto' };
   }
 
   /** Destino provisional del docente (Fase 4: panel). Solo rol TEACHER. */

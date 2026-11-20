@@ -20,8 +20,11 @@ COPY packages/shared/package.json packages/shared/
 COPY apps/api/prisma apps/api/prisma
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --filter @contikids/api
+# La api importa @contikids/shared (game-rules): se compila primero (dist) y luego la api.
+COPY packages/shared packages/shared
 COPY apps/api apps/api
-RUN pnpm --filter @contikids/api build \
+RUN pnpm --filter @contikids/shared build \
+ && pnpm --filter @contikids/api build \
  && pnpm --filter @contikids/api exec tsc -p tsconfig.seed.json
 # /out = solo dependencias de producción de la api (sin devDependencies ni CLI de Prisma).
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \

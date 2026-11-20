@@ -1,36 +1,29 @@
 # CONTIKIDS — Progreso
 
-> Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.2).
+> Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.3).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
-## Estado al 2026-11-20 (Fase 2 planificada y APROBADA; la 2.1 la empieza otra sesión)
+## Estado al 2026-11-20 (Fase 2 — sub-fase 2.1 HECHA; sigue la 2.2)
 
-**Dónde quedamos:** la Fase 2 está **planificada en `docs/FASE2_PLAN.md`** y **Pedro respondió las dudas** (§5 del plan). Todavía no hay código ni migraciones. La **2.1 la hace otra sesión**: leer el plan completo antes de empezar.
-- **Sub-fases:**
-  - 2.1 Mapa de islas: con la migración §8 → v1.3, `game-rules.ts` y el rate limit para el aula.
-  - 2.2 Lección: con Twemoji, el arreglo de los emojis de la bienvenida y la BD `contikids_test`.
-  - 2.3 Quiz con pista y reintento.
-  - 2.4 Prueba, desbloqueo y medalla.
-  - 2.5 Recompensas y perfil.
-  - 2.6 M1 completo, con contenido provisional y progreso demo.
-  - ~~2.7 Tiempo de juego~~ → pasa a la Fase 4.
-- **Decisiones de Pedro (2026-11-20):**
-  1. **Rate limit:** el login de alumnos va **por alumno** y la lista de perfiles **por sección** (no por IP), con un límite por IP más alto como protección general. El login docente sigue por IP.
-  2. **Nota:** 1.er intento = 1 punto, 2.º = 0,5, fallo = 0. **Todos los valores del juego** (puntos, XP, monedas, bono) van en **un solo archivo**, `packages/shared/src/game-rules.ts`.
-  3. **Premios:** solo la primera vez que se completa cada submódulo + **bono de 5 monedas** al aprobar la prueba.
-  4. **Emojis:** Twemoji en SVG local. También se arreglan los emojis de la bienvenida.
-  5. **BD:** producción (`contikids`) = la base real que ve la profesora. `contikids_test` es **solo** para pruebas automáticas, en el mismo contenedor. Las pruebas **nunca** tocan producción (candado en el `globalSetup` de Jest).
-  6. **Tiempo de juego:** para la Fase 4.
-  - **Escala:** UNA sección de ~30–40 alumnos, sin multi-escuela. Las claves y los PIN los crea y restablece el docente.
-  - Las otras 7 dudas: se aplican las recomendaciones del plan (quiz sin nota mínima, una lección por módulo, `SEED_RESET_DEMO_PROGRESS`, Ajustes en la Fase 5, dependencias mínimas, medallas las decide Contenido, se carga el contenido provisional de M1).
-- **Schema v1.3 propuesto** (aditivo, una sola migración en la 2.1):
-  - `AttemptAnswer.tryNumber`;
-  - `Attempt.stars`;
-  - `SubmoduleProgress.bestStars`;
-  - `AnswerOption.order` con clave única;
-  - tabla nueva `RewardGrant` (premios idempotentes).
-- **Hallazgo resuelto en el plan:** el rate limit iba por IP; en un aula detrás de un mismo NAT bloquearía a los niños. Se corrige en la 2.1 (decisión 1).
-- Contenido provisional de M1 propuesto en §4.1 del plan, para que lo revise el Equipo de Contenido.
+**Dónde quedamos:** la **2.1 (mapa de islas + base de la Fase 2)** está hecha y desplegada. Antes de seguir, leer `docs/FASE2_PLAN.md` completo (§5 = decisiones de Pedro). **No avanzar a la 2.2 sin el OK de Pedro.**
+- **Cambio de orden aprobado por Pedro:** la BD `contikids_test` y el candado de las pruebas se adelantaron de la 2.2 a la 2.1 y se hicieron **antes** de la migración. Twemoji sigue en la 2.2. Plan actualizado.
+- **Hecho en la 2.1:**
+  1. **`contikids_test`** creada en el mismo contenedor `contikids-postgres`. Pruebas de integración: `pnpm --filter @contikids/api test:int` (archivos `*.int-spec.ts`); leen solo `TEST_DATABASE_URL` (en el `.env` del VPS; plantilla en `.env.example`). **Candado** en `apps/api/src/testing/`: `globalSetup` cancela si la BD no es exactamente `contikids_test`, si falta la variable o si coincide con `DATABASE_URL`; confirma con `current_database()` y `truncateAll` revisa la BD antes de cada `TRUNCATE`. Probado a mano: con la URL de producción cancela. `pnpm test` = solo unitarias (sin BD). CI con servicio `postgres:16-alpine`.
+  2. **Migración v1.3** `20261120120000_game_v1_3` (aditiva): `AttemptAnswer.tryNumber`, `Attempt.stars`, `SubmoduleProgress.bestStars`, `AnswerOption.order` (relleno con `ROW_NUMBER()` por pregunta) y tabla `RewardGrant`. Probada antes sobre una copia con los datos reales. **Respaldo de producción previo:** `/root/backups/contikids-pre-v1.3-20261120-0246.sql` (chmod 600, fuera del repo). §8 del contexto → **v1.3** (schema + historial). El seed ahora hace `upsert` de las opciones por `(pregunta, order)`.
+  3. **`packages/shared/src/game-rules.ts`**: todos los valores del juego (1/0,5/0, XP 20/30/50, +1 moneda por acierto, bono 5, estrellas, % del módulo, tope 600 s). La api ahora **depende de `@contikids/shared`**: el Dockerfile de la api compila shared antes; en local/CI hace falta `pnpm --filter @contikids/shared build` (o `pnpm build`) antes de typecheck/tests de la api. Los tipos del mapa (`MapData`, `ModuleDetail`…) también están en shared.
+  4. **Rate limit para el aula** (`apps/api/src/rate-limit/`, números en `rate-limits.ts`): login de alumno **por alumno** (10/min) + por IP 200/min; perfiles **por sección** (60/min) + por IP 200/min; rutas autenticadas **por usuario** (120/min, un contador para todas sus rutas); resto por IP 2000/min; login docente por IP (10/min). Tests: 40 alumnos distintos desde la misma IP pasan; el 11.º intento al mismo alumno → 429.
+  5. **API:** `GET /me/map` y `GET /modules/:ref` (id o código `M1`; módulo cerrado → 403 `CONTENT_LOCKED`; docente → 403). `computeMap` es una función pura (tests). Se quitó `GET /student/home`.
+  6. **Web:** TanStack Query (caché vaciada al entrar/salir: varios niños comparten equipo), layout del estudiante con HUD (monedas/XP de `/me/map`) y barra inferior Mapa · Recompensas · Perfil (sidebar en ≥ 1024 px), `/mapa` (camino con 5 islas en rombo), `/mapa/:code` (zoom CSS a Lección/Quiz/Prueba, respeta `prefers-reduced-motion`), Recompensas y Perfil como "próximamente" (Perfil ya tiene Salir). Íconos SVG propios (sin emojis; Twemoji llega en la 2.2). JS inicial **102 KB gzip** (< 200).
+- **Pruebas:** 34 unitarias api + 7 integración (contra `contikids_test`) + 11 shared; lint, typecheck y prettier limpios. Capturas con Chrome headless a 360/390/1366 px: sin scroll horizontal y sin islas solapadas.
+- **Pendiente de la Fase 2:** 2.2 Lección (+ Twemoji + arreglo de emojis de la bienvenida), 2.3 Quiz, 2.4 Prueba/medalla, 2.5 Recompensas/perfil, 2.6 M1 completo + progreso demo. Las pantallas de submódulo aún no existen: en el zoom, la Lección sale "Abierto" pero todavía no se puede entrar.
+- **Decisiones de Pedro (2026-11-20, siguen vigentes):**
+  1. Rate limit por alumno/sección, no por IP (login docente sigue por IP).
+  2. Nota: 1.er intento = 1, 2.º = 0,5, fallo = 0; todos los valores en `game-rules.ts`.
+  3. Premios solo la primera vez por submódulo + bono de 5 monedas al aprobar la prueba.
+  4. Twemoji en SVG local (también arregla los emojis de la bienvenida).
+  5. `contikids` = base real de la profesora; `contikids_test` solo para pruebas, con candado.
+  6. Tiempo de juego → Fase 4.
+  - **Escala:** UNA sección de ~30–40 alumnos. Las claves y los PIN los crea y restablece el docente.
 
 ## Estado al 2026-11-18 (Fase 1 terminada)
 

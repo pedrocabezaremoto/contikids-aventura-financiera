@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, refreshSession, setAccessToken, type SessionData } from '../lib/api';
+import { queryClient } from '../lib/queries';
 import type { SessionUser, StudentUser, TeacherUser } from '../lib/types';
 import { AuthContext, type AuthState, type AuthStatus } from './auth-context';
 
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const start = useCallback((s: SessionData) => {
+    queryClient.clear(); // nada de datos de la sesión anterior
     setAccessToken(s.accessToken);
     setUser(s.user);
     setStatus('authenticated');
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await api('/auth/logout', { method: 'POST', auth: false }).catch(() => undefined);
     setAccessToken(null);
+    queryClient.clear();
     setUser(null);
     setStatus('anonymous');
   }, []);

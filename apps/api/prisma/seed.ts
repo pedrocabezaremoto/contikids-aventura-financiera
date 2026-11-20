@@ -3,7 +3,7 @@
  *
  * - Modelos con clave única → upsert.
  * - Desde §8 v1.2, Lesson / ContentBlock / Quiz / Question también usan upsert por su
- *   clave única. AnswerOption no tiene clave única: se busca por (pregunta, texto).
+ *   clave única. Desde v1.3 AnswerOption también: (pregunta, order).
  * - Los PIN de demo se generan al crear cada alumno y se imprimen SOLO en consola.
  *   Con SEED_RESET_DEMO_PINS=1 se regeneran.
  */
@@ -24,16 +24,6 @@ import {
 const prisma = new PrismaClient();
 
 const newPin = () => randomInt(0, 10_000).toString().padStart(4, '0');
-
-/** Busca por `where`; si existe lo actualiza, si no lo crea. Devuelve el id. */
-async function findOrCreate<T extends { id: number }>(
-  find: () => Promise<T | null>,
-  update: (id: number) => Promise<T>,
-  create: () => Promise<T>,
-): Promise<T> {
-  const found = await find();
-  return found ? update(found.id) : create();
-}
 
 async function seedSettings() {
   // Solo crea los valores por defecto; no pisa lo que el docente cambie después.
@@ -106,18 +96,20 @@ async function seedQuizzes(moduleIds: Record<ModuleCode, number>) {
         create: { ...data, quizId: quiz.id, order: qs.order },
       });
 
-      // AnswerOption no tiene clave única en §8: se busca por (pregunta, texto).
-      for (const opt of qs.options ?? []) {
-        await findOrCreate(
-          () =>
-            prisma.answerOption.findFirst({ where: { questionId: question.id, text: opt.text } }),
-          (id) => prisma.answerOption.update({ where: { id }, data: { isCorrect: opt.isCorrect } }),
-          () =>
-            prisma.answerOption.create({
-              data: { questionId: question.id, text: opt.text, isCorrect: opt.isCorrect },
-            }),
-        );
+      // Desde §8 v1.3 AnswerOption tiene clave única (questionId, order): upsert como el resto.
+      // Si Contenido recorta las opciones de una pregunta, las sobrantes (order > N) se borran.
+      const options = qs.options ?? [];
+      for (const [i, opt] of options.entries()) {
+        const order = i + 1;
+        await prisma.answerOption.upsert({
+          where: { questionId_order: { questionId: question.id, order } },
+          update: { text: opt.text, isCorrect: opt.isCorrect },
+          create: { questionId: question.id, order, text: opt.text, isCorrect: opt.isCorrect },
+        });
       }
+      await prisma.answerOption.deleteMany({
+        where: { questionId: question.id, order: { gt: options.length } },
+      });
     }
   }
 }

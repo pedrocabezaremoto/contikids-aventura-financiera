@@ -5,6 +5,7 @@
 > Responde y comenta el código en **español**; nombres de código (variables, funciones, tablas) en **inglés**.
 
 ### Historial de cambios
+- **v1.3 (2026-11-20, Fase 2):** `AttemptAnswer.tryNumber` (+ único `(attemptId, questionId, tryNumber)`) para el reintento con pista; `Attempt.stars` y `SubmoduleProgress.bestStars` (estrellas 0–3); `AnswerOption.order` (+ único `(questionId, order)`; el seed usa `upsert` y la migración rellena `order` por pregunta); tabla nueva `RewardGrant` con único `(studentId, key)`: cada premio se paga **una sola vez** y queda el historial. Todo aditivo: no se borró ni renombró nada. Los valores del juego (puntos, XP, monedas) viven en `packages/shared/src/game-rules.ts`.
 - **v1.2 (2026-11-18):** claves únicas `Lesson(moduleId, order)`, `ContentBlock(lessonId, order)`, `Quiz(moduleId, type)` y `Question(quizId, order)` (el seed usa `upsert`; un módulo tiene a lo sumo un QUIZ y un EXAM).
 - **v1.1 (2026-11-17):** `Section.code`; nuevo modelo `Scenario` (agrupa las operaciones de una historia); intentos del Libro Diario en `JournalAttempt` (solo los asientos correctos son `JournalEntry`); Mayor y Balance calculados solo con asientos correctos del escenario; relación `PlaySession → LearningModule`; códigos de cuenta cortos (`1.1`, `4.1`); desafío final = **6 operaciones**; todos los ejemplos en **Bs.**
 - **v1.0 (2026-11-16):** versión inicial.
@@ -98,7 +99,7 @@ El PDF del equipo menciona escritorio con Python + Tkinter + SQLite. **Eso queda
 - **Node.js 22 LTS + TypeScript + NestJS** (módulos, guards por rol, DTOs validados; mapea 1:1 con los casos de uso)
 - **Prisma ORM + PostgreSQL 16**
 - **Auth:** JWT (access 15 min + refresh en cookie httpOnly). Contraseñas y PINs con **argon2**
-- **Rate limit** en login (`@nestjs/throttler`) + bloqueo temporal tras PINs fallidos
+- **Rate limit** (`@nestjs/throttler`): login de alumno **por alumno**, perfiles **por sección**, rutas autenticadas **por usuario**, y un límite **por IP alto** como red de seguridad (UNA aula comparte IP); login docente por IP. Números en `apps/api/src/rate-limit/rate-limits.ts`. + bloqueo temporal tras PINs fallidos
 - **Reportes:** `exceljs` (.xlsx) y `pdfmake` (.pdf)
 - **Swagger** en `/api/docs`
 
@@ -297,6 +298,7 @@ model Student {
   journalEntries  JournalEntry[]
   badges          StudentBadge[]
   sessions        PlaySession[]
+  rewards         RewardGrant[]
 }
 
 model LearningModule {
@@ -364,9 +366,11 @@ model Question {
 model AnswerOption {
   id         Int      @id @default(autoincrement())
   questionId Int
+  order      Int      // v1.3: posición dentro de la pregunta (clave del upsert del seed)
   text       String
   isCorrect  Boolean
   question   Question @relation(fields: [questionId], references: [id])
+  @@unique([questionId, order])
 }
 
 model Attempt {
@@ -377,6 +381,7 @@ model Attempt {
   finishedAt DateTime?
   score      Int?
   passed     Boolean?
+  stars      Int?      // v1.3: 0–3, estrellas de esfuerzo
   student    Student   @relation(fields: [studentId], references: [id])
   quiz       Quiz      @relation(fields: [quizId], references: [id])
   answers    AttemptAnswer[]
@@ -386,12 +391,14 @@ model AttemptAnswer {
   id               Int      @id @default(autoincrement())
   attemptId        Int
   questionId       Int
+  tryNumber        Int      @default(1)   // v1.3: 1 o 2 (reintento tras la pista)
   selectedOptionId Int?
   freeAnswer       Json?
   isCorrect        Boolean
   timeSeconds      Int
   attempt          Attempt  @relation(fields: [attemptId], references: [id])
   question         Question @relation(fields: [questionId], references: [id])
+  @@unique([attemptId, questionId, tryNumber])
 }
 
 // ---- Simulador contable (Libro Diario / Mayor / Balance) ----
@@ -491,6 +498,7 @@ model SubmoduleProgress {
   status     ProgressStatus @default(LOCKED)
   attempts   Int            @default(0)
   bestScore  Int?
+  bestStars  Int?           // v1.3
   timeSecs   Int            @default(0)
   student    Student        @relation(fields: [studentId], references: [id])
   module     LearningModule @relation(fields: [moduleId], references: [id])
@@ -513,6 +521,19 @@ model StudentBadge {
   student   Student  @relation(fields: [studentId], references: [id])
   badge     Badge    @relation(fields: [badgeId], references: [id])
   @@id([studentId, badgeId])
+}
+
+// v1.3: cada premio se paga UNA sola vez (idempotencia) y queda como historial.
+// key: "LESSON:M1", "QUIZ:M1", "EXAM:M1"… Student.coins/xp siguen siendo el total.
+model RewardGrant {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  key       String
+  xp        Int      @default(0)
+  coins     Int      @default(0)
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id])
+  @@unique([studentId, key])
 }
 
 model PlaySession {             // CU-07 / CU-12
@@ -546,7 +567,7 @@ model SystemSettings {
 | `POST /auth/student/login` `{studentId, pin}` | público | CU-01.1 |
 | `POST /auth/refresh`, `POST /auth/logout` | auth | |
 | `GET /me/map` | estudiante | CU-02 (módulos + estado + monedas/XP) |
-| `GET /modules/:id` | estudiante | CU-03 (3 submódulos y su estado) |
+| `GET /modules/:id` | estudiante | CU-03 (3 submódulos y su estado). `:id` = id o código (`M1`); módulo cerrado → 403 `CONTENT_LOCKED` |
 | `GET /lessons/:id` · `POST /lessons/:id/complete` | estudiante | CU-04 |
 | `GET /quizzes/:id` · `POST /quizzes/:id/attempts` · `POST /attempts/:id/answers` · `POST /attempts/:id/finish` | estudiante | CU-05, CU-06, CU-06.1 |
 | `GET /scenarios/:id` | estudiante | operaciones del escenario + cuáles ya registró |

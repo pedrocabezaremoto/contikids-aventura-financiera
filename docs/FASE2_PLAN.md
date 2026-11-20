@@ -1,6 +1,7 @@
 # CONTIKIDS — Plan de la Fase 2 (Estudiante)
 
-> Estado: **PLAN APROBADO (2026-11-20). Dudas resueltas en §5.** La 2.1 la empieza otra sesión; todavía no hay código.
+> Estado: **PLAN APROBADO (2026-11-20). Dudas resueltas en §5.** 2.1 **hecha** (2026-11-20); sigue la 2.2.
+> **Cambio de orden (Pedro, 2026-11-20):** la base `contikids_test` y el **candado de las pruebas** se adelantaron de la 2.2 a la **2.1** (se hicieron ANTES de la migración y de escribir pruebas nuevas). Twemoji sigue en la 2.2.
 > **Escala de diseño:** UNA sección de ~30–40 alumnos. Sin multi-escuela, sin paginación ni nada extra. Las claves y los PIN los crea y los restablece el docente (§12; el CRUD es de la Fase 4).
 > Fecha: 2026-11-20. Base: `docs/CONTIKIDS_CONTEXTO_LLM.md` v1.2 (§6, §7, §8, §9, §10) y el repo en `32fe911`.
 > Alcance (§14): mapa con desbloqueo, lección, quiz, prueba, monedas/XP/medallas, **Módulo 1 completo de punta a punta**.
@@ -69,6 +70,11 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
 ### 2.1 — Mapa de islas (y la base de progreso)
 **Demo en el dominio:** el alumno entra y ve su mapa: M1 abierto, M2–M5 con candado, monedas y XP arriba y barra inferior. Al tocar M1 se acerca (zoom) a sus 3 submódulos: Lección abierta, Quiz y Prueba cerrados.
 
+- **Base de pruebas y candado (adelantado desde la 2.2, se hace PRIMERO):**
+  - `CREATE DATABASE contikids_test` en el **mismo** contenedor `contikids-postgres` (sin contenedor nuevo). Producción (`contikids`) es la base real que ve la profesora: ningún script de prueba la usa.
+  - Las pruebas de integración (`*.int-spec.ts`, `pnpm test:int`) leen **solo** `TEST_DATABASE_URL`, nunca `DATABASE_URL`.
+  - **Candado:** el `globalSetup` de Jest (`apps/api/src/testing/`) cancela todo si la BD no se llama exactamente `contikids_test`, si falta la variable o si coincide con `DATABASE_URL`; además confirma con `current_database()` y aplica las migraciones solo a esa base. `truncateAll` verifica la BD antes de cada `TRUNCATE`.
+  - CI: servicio `postgres:16-alpine` con la BD `contikids_test`.
 - **Schema:** migración v1.3 completa (§1.2) + §8 → v1.3 en el contexto + seed de `AnswerOption` por `order`.
 - **Config:** crear `packages/shared/src/game-rules.ts` con todos los valores del juego (decisión 2).
 - **Rate limit para el aula** (decisión 1). Hoy todo va por IP: global 120/min, logins 10/min, perfiles 30/min. Pasa a:
@@ -90,6 +96,7 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
   - `/mapa/:code` (ej. `/mapa/m1`): "zoom" a los 3 submódulos. Transición CSS (respetando `prefers-reduced-motion`); Framer Motion solo si la CSS no alcanza.
   - El HUD toma monedas y XP de `/me/map` (no del `user` del login, que queda viejo).
 - **Pruebas:**
+  - Candado de la BD de pruebas: cancela con URL de producción, sin variable o con otro nombre (Jest unitario + prueba manual).
   - Jest de `computeMap`: alumno sin filas → M1 abierto; lección hecha → quiz abierto; prueba aprobada → M2 abierto; módulo sin prueba → `comingSoon`.
   - Jest: el docente recibe 403 en `/me/map`.
   - Capturas con Chrome headless a 360/390/1366 px.
@@ -111,13 +118,7 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
 - **Pruebas:**
   - Vitest de `parseDiagram` con todos los bloques del seed.
   - Jest: `complete` dos veces → XP una sola vez; lección cerrada → 403.
-  - **Integración contra `contikids_test`** (decisión 5), que se prepara en esta sub-fase:
-    - `CREATE DATABASE contikids_test` dentro del **mismo** contenedor `contikids-postgres` (sin contenedor nuevo) + `migrate deploy` contra ella.
-    - Los tests de integración leen **solo** `TEST_DATABASE_URL`, nunca `DATABASE_URL`.
-    - **Candado:** un `globalSetup` de Jest aborta si el nombre de la BD no es exactamente `contikids_test` o si la URL coincide con `DATABASE_URL`. Así las pruebas **nunca** pueden tocar producción, ni por error.
-    - Cada test limpia sus propias tablas (`TRUNCATE` solo en `contikids_test`).
-    - CI: servicio `postgres:16-alpine` con la BD `contikids_test`.
-    - Producción (`contikids`) es la base real que ve la profesora: ningún script de prueba la usa.
+  - **Integración contra `contikids_test`:** la base y el candado ya están hechos desde la 2.1 (decisión 5); aquí solo se escriben las pruebas nuevas encima.
 
 ### 2.3 — Quiz con pista y reintento
 **Demo:** Quiz de M1 de una pregunta por pantalla. Si falla, Waddles da la pista y se reintenta; al 2.º fallo, explica y sigue. El resultado muestra las estrellas, las monedas ganadas y el +30 XP. La Prueba queda abierta.
@@ -194,7 +195,7 @@ El diseño queda anotado aquí para la Fase 4. En la Fase 2 solo se guarda `time
 ### Resumen
 | Sub-fase | Pantallas | Endpoints | Schema |
 |---|---|---|---|
-| 2.1 | Mapa, zoom del módulo, layout + barra inferior | `GET /me/map`, `GET /modules/:id` | Migración v1.3 completa |
+| 2.1 | Mapa, zoom del módulo, layout + barra inferior · **+ BD `contikids_test` y candado** | `GET /me/map`, `GET /modules/:id` | Migración v1.3 completa |
 | 2.2 | Lección | `GET /lessons/:id`, `POST /lessons/:id/complete` | — |
 | 2.3 | Quiz + resultado | `GET /quizzes/:id`, `POST /quizzes/:id/attempts`, `POST /attempts/:id/answers`, `POST /attempts/:id/finish` | — |
 | 2.4 | Prueba + resultado/medalla | (mismos de 2.3) | — |

@@ -1,21 +1,21 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProgressModule } from './progress/progress.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
 
 @Module({
   imports: [
     // El .env vive en la raíz del monorepo (lo comparte docker-compose).
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['../../.env', '.env'] }),
-    // Límite general por IP: 120 peticiones/min. Los logins tienen uno más estricto (@Throttle).
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
+    // Rate limit por alumno / sección / usuario / IP (números en rate-limit/rate-limits.ts).
+    RateLimitModule,
     PrismaModule,
     HealthModule,
     AuthModule,
+    ProgressModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

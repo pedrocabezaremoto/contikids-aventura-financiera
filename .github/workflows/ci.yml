@@ -8,9 +8,22 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    services:
+      # BD solo para las pruebas de integración (el candado de Jest exige que se llame contikids_test).
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: contikids_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci -d contikids_test" --health-interval 5s
+          --health-timeout 5s --health-retries 10
     env:
-      # Solo para que Prisma pueda validar/generar; el CI no se conecta a ninguna BD.
+      # Prisma validate/generate no se conectan; las pruebas de integración usan TEST_DATABASE_URL.
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/contikids_test?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -24,9 +37,13 @@ jobs:
         run: pnpm --filter @contikids/api exec prisma validate
       - name: Prisma generate
         run: pnpm --filter @contikids/api exec prisma generate
+      - name: Compilar shared (la api importa su dist)
+        run: pnpm --filter @contikids/shared build
       - name: Lint
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
-      - name: Tests
+      - name: Tests unitarios
         run: pnpm test
+      - name: Tests de integración (contikids_test)
+        run: pnpm --filter @contikids/api test:int

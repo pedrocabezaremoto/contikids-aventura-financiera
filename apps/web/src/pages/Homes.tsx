@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../auth/auth-context';
-import { Avatar, Logo, Screen, Waddles } from '../components/ui';
+import { Logo, Screen } from '../components/ui';
 import { api } from '../lib/api';
 
 /** Mensaje de la ruta protegida por rol (prueba los guards de punta a punta). */
@@ -29,26 +29,7 @@ function LogoutButton() {
   );
 }
 
-/** 6a. Destino provisional del estudiante (Fase 2: mapa de islas). */
-export function StudentHome() {
-  const { user } = useAuth();
-  const msg = useHomeMessage('/student/home');
-  if (user?.role !== 'STUDENT') return null;
-  return (
-    <Screen>
-      <Logo size={100} />
-      <div className="card-game flex flex-col items-center gap-3 text-center">
-        <Avatar name={user.name} color={user.avatarColor} size={88} />
-        <h1 className="text-3xl">¡Hola, {user.name}!</h1>
-        <p className="text-muted">Sección {user.sectionCode}</p>
-      </div>
-      <Waddles>{msg || 'Tu mapa llega pronto'} 🗺️</Waddles>
-      <LogoutButton />
-    </Screen>
-  );
-}
-
-/** 6b. Destino provisional del docente (Fase 4: panel). */
+/** Destino provisional del docente (Fase 4: panel). */
 export function TeacherHome() {
   const { user } = useAuth();
   const msg = useHomeMessage('/teacher/home');

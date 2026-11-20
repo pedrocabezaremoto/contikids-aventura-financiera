@@ -114,6 +114,22 @@
   animation: wiggle 0.4s ease-in-out 2;
 }
 
+/* "Zoom" del mapa a una isla (sustituye a Framer Motion: el CSS alcanza). */
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@utility animate-zoom-in {
+  transform-origin: 50% 20%;
+  animation: zoom-in 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
