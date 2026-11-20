@@ -3,25 +3,33 @@
 > Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.2).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
-## Estado al 2026-11-20 (Fase 2 planificada, esperando OK de Pedro para la 2.1)
+## Estado al 2026-11-20 (Fase 2 planificada y APROBADA; la 2.1 la empieza otra sesión)
 
-**Dónde quedamos:** la Fase 2 está **planificada en `docs/FASE2_PLAN.md`**. Todavía no hay código ni migraciones.
+**Dónde quedamos:** la Fase 2 está **planificada en `docs/FASE2_PLAN.md`** y **Pedro respondió las dudas** (§5 del plan). Todavía no hay código ni migraciones. La **2.1 la hace otra sesión**: leer el plan completo antes de empezar.
 - **Sub-fases:**
-  - 2.1 Mapa de islas: con la migración §8 → v1.3.
-  - 2.2 Lección.
+  - 2.1 Mapa de islas: con la migración §8 → v1.3, `game-rules.ts` y el rate limit para el aula.
+  - 2.2 Lección: con Twemoji, el arreglo de los emojis de la bienvenida y la BD `contikids_test`.
   - 2.3 Quiz con pista y reintento.
   - 2.4 Prueba, desbloqueo y medalla.
   - 2.5 Recompensas y perfil.
   - 2.6 M1 completo, con contenido provisional y progreso demo.
-  - 2.7 Tiempo de juego (opcional).
+  - ~~2.7 Tiempo de juego~~ → pasa a la Fase 4.
+- **Decisiones de Pedro (2026-11-20):**
+  1. **Rate limit:** el login de alumnos va **por alumno** y la lista de perfiles **por sección** (no por IP), con un límite por IP más alto como protección general. El login docente sigue por IP.
+  2. **Nota:** 1.er intento = 1 punto, 2.º = 0,5, fallo = 0. **Todos los valores del juego** (puntos, XP, monedas, bono) van en **un solo archivo**, `packages/shared/src/game-rules.ts`.
+  3. **Premios:** solo la primera vez que se completa cada submódulo + **bono de 5 monedas** al aprobar la prueba.
+  4. **Emojis:** Twemoji en SVG local. También se arreglan los emojis de la bienvenida.
+  5. **BD:** producción (`contikids`) = la base real que ve la profesora. `contikids_test` es **solo** para pruebas automáticas, en el mismo contenedor. Las pruebas **nunca** tocan producción (candado en el `globalSetup` de Jest).
+  6. **Tiempo de juego:** para la Fase 4.
+  - **Escala:** UNA sección de ~30–40 alumnos, sin multi-escuela. Las claves y los PIN los crea y restablece el docente.
+  - Las otras 7 dudas: se aplican las recomendaciones del plan (quiz sin nota mínima, una lección por módulo, `SEED_RESET_DEMO_PROGRESS`, Ajustes en la Fase 5, dependencias mínimas, medallas las decide Contenido, se carga el contenido provisional de M1).
 - **Schema v1.3 propuesto** (aditivo, una sola migración en la 2.1):
   - `AttemptAnswer.tryNumber`;
   - `Attempt.stars`;
   - `SubmoduleProgress.bestStars`;
   - `AnswerOption.order` con clave única;
   - tabla nueva `RewardGrant` (premios idempotentes).
-- **Hallazgo:** el rate limit va por IP. En un aula detrás de un mismo NAT bloquearía a los niños (duda 6 del plan).
-- **Pendiente de Pedro:** responder las 13 dudas de §5 del plan (o "OK a todo" con las recomendadas) y dar el **OK para la 2.1**.
+- **Hallazgo resuelto en el plan:** el rate limit iba por IP; en un aula detrás de un mismo NAT bloquearía a los niños. Se corrige en la 2.1 (decisión 1).
 - Contenido provisional de M1 propuesto en §4.1 del plan, para que lo revise el Equipo de Contenido.
 
 ## Estado al 2026-11-18 (Fase 1 terminada)
@@ -73,7 +81,7 @@
 
 ### Pendiente de la Fase 1 (pulido visual, después)
 - El logo (`logo-contikids.webp`) tiene fondo blanco: hace falta una versión con fondo transparente.
-- Revisar los emojis de los botones de bienvenida (en dispositivos sin fuente de emojis se ven como cuadros).
+- Revisar los emojis de los botones de bienvenida (en dispositivos sin fuente de emojis se ven como cuadros). → **Se arregla en la 2.2 con Twemoji** (decisión de Pedro).
 - Comparar con la referencia `ContiKids · Pantallas de inicio de sesión.html` (panel teal con el logo a la izquierda en desktop).
 
 ## 🗓️ Plan pendiente (pospuesto por Pedro) — cada paso con su OK
@@ -181,7 +189,7 @@
 - [ ] Subir `libro_diario_propuesta.html` a `docs/design-refs/`.
 - [ ] Probar la Fase 1 en el dominio con las credenciales demo (se dieron por chat).
 - [ ] Más adelante: confirmar la limpieza del VPS y las propuestas de disco (`/root/reporte-limpieza.md`). Lo que no esté completo en GitHub se respalda antes.
-- [ ] Responder las dudas de `docs/FASE2_PLAN.md` §5 y dar el **OK para la 2.1**.
+- [x] Responder las dudas de `docs/FASE2_PLAN.md` §5 (hecho 2026-11-20). La 2.1 la empieza otra sesión.
 
 **Fase 1 (hecho):**
 - [x] §8 del contexto a **v1.2** con claves únicas + migración + seed con `upsert`.
@@ -218,7 +226,7 @@ Nada de Contikids escucha en `0.0.0.0`. Ojo: `pnpm dev:api` y la api de producci
 - [x] **Fase 0 — Base** (2026-11-18, aprobada).
 - [x] **Fase 0.5 — Despliegue** (2026-11-18): en vivo, con auto-deploy por webhook probado.
 - [x] **Fase 1 — Acceso** (2026-11-18): en vivo y probada.
-- [ ] Fase 2 — Estudiante (mapa, lección, quiz, prueba, monedas/XP/medallas, M1 completo). **Planificada** (2026-11-20): `docs/FASE2_PLAN.md`, sub-fases 2.1–2.7.
+- [ ] Fase 2 — Estudiante (mapa, lección, quiz, prueba, monedas/XP/medallas, M1 completo). **Planificada y aprobada** (2026-11-20): `docs/FASE2_PLAN.md`, sub-fases 2.1–2.6 (el tiempo de juego pasó a la Fase 4).
 - [ ] Fase 3 — Simulador contable (Diario, Mayor, Balance por escenario).
 - [ ] Fase 4 — Docente (KPIs, CRUD alumnos, progreso, tiempos, reportes).
 - [ ] Fase 5 — Pulido (PWA offline, sonidos, modo oscuro, pruebas 360px).

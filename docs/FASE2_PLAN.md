@@ -1,6 +1,7 @@
 # CONTIKIDS — Plan de la Fase 2 (Estudiante)
 
-> Estado: **PLAN, sin código.** Esperando el OK de Pedro para empezar la 2.1.
+> Estado: **PLAN APROBADO (2026-11-20). Dudas resueltas en §5.** La 2.1 la empieza otra sesión; todavía no hay código.
+> **Escala de diseño:** UNA sección de ~30–40 alumnos. Sin multi-escuela, sin paginación ni nada extra. Las claves y los PIN los crea y los restablece el docente (§12; el CRUD es de la Fase 4).
 > Fecha: 2026-11-20. Base: `docs/CONTIKIDS_CONTEXTO_LLM.md` v1.2 (§6, §7, §8, §9, §10) y el repo en `32fe911`.
 > Alcance (§14): mapa con desbloqueo, lección, quiz, prueba, monedas/XP/medallas, **Módulo 1 completo de punta a punta**.
 > Fuera de alcance: simulador contable (Fase 3), panel docente (Fase 4), PWA/sonidos/modo oscuro (Fase 5).
@@ -40,17 +41,19 @@ Proceso de la migración (igual que en la Fase 1): `prisma migrate diff` → arc
 
 Funciones **puras** en la api, con tests Jest (§13). Los servicios solo leen o escriben en Prisma alrededor de ellas.
 
-| Regla | Propuesta (las marcadas con ❓ están en §5) |
+> **Todos los valores numéricos del juego** (1 / 0,5 / 0 puntos, XP, monedas, bono, máx. intentos, umbral de estrellas, tope de tiempo por respuesta) viven en **un solo archivo**: `packages/shared/src/game-rules.ts` (decisión 2). La api y la web lo importan. Si la profesora pide un ajuste, se cambia ahí y en ningún otro lado. La nota mínima sigue en `SystemSettings.minPassingScore` (ya está en la BD).
+
+| Regla | Decisión |
 |---|---|
-| **Desbloqueo** | M1 → Lección abierta. Lección completada → abre Quiz. Quiz **terminado** (con cualquier nota) → abre Prueba ❓. Prueba aprobada → módulo `COMPLETED` y se abre la Lección del siguiente. Un módulo sin quiz o prueba en la BD se muestra como **"Próximamente"** aunque esté abierto. |
+| **Desbloqueo** | M1 → Lección abierta. Lección completada → abre Quiz. Quiz **terminado** (con cualquier nota) → abre Prueba. Prueba aprobada → módulo `COMPLETED` y se abre la Lección del siguiente. Un módulo sin quiz o prueba en la BD se muestra como **"Próximamente"** aunque esté abierto. |
 | **Estado del mapa** | `computeMap(modules, progressRows)` se calcula al leer. Las filas de progreso se escriben solo cuando pasa algo (lección completada, intento terminado). Si el alumno no tiene filas, tiene M1 abierto: no hace falta sembrar progreso en los alumnos actuales. |
 | **Reintento** | Máx. **2 intentos por pregunta**. 1.er fallo → `hint`. 2.º fallo → `explanation` + respuesta correcta, y se sigue. Acierto → `explanation` + diagrama `result`. |
-| **Nota (0–100)** | Acierto al 1.er intento = 1 punto; al 2.º = 0,5; nunca = 0 ❓. Nota = puntos / preguntas × 100, redondeada. |
+| **Nota (0–100)** | Acierto al 1.er intento = 1 punto; al 2.º = 0,5; nunca = 0. Nota = puntos / preguntas × 100, redondeada. |
 | **Aprobar la prueba** | `score ≥ SystemSettings.minPassingScore` (70 %). Se puede repetir siempre. |
 | **Estrellas** | 3 ⭐ = todo al 1.er intento · 2 ⭐ = necesitó pista en ≤ 1/3 de las preguntas · 1 ⭐ = lo terminó. Siempre ≥ 1. |
-| **XP** | Lección +20, Quiz +30, Prueba +50 (§7). Constantes en `packages/shared/rewards.ts`; pasar a `SystemSettings` en la Fase 4 si el docente las quiere cambiar. |
-| **Monedas Waddles** | Quiz: +1 por pregunta acertada (1.er o 2.º intento). Prueba: **+5 de bono** al aprobar ❓. |
-| **Repetir** | XP y monedas **solo la primera vez** que se completa cada submódulo (`RewardGrant`) ❓. Repetir mejora la nota y las estrellas guardadas, pero no paga de nuevo. |
+| **XP** | Lección +20, Quiz +30, Prueba +50 (§7). En `game-rules.ts`. |
+| **Monedas Waddles** | Quiz: +1 por pregunta acertada (1.er o 2.º intento). Prueba: **+5 de bono** al aprobar. |
+| **Repetir** | XP y monedas **solo la primera vez** que se completa cada submódulo (`RewardGrant`). Repetir mejora la nota y las estrellas guardadas, pero no paga de nuevo. |
 | **Medalla** | Al aprobar la prueba del módulo → `StudentBadge` (la PK compuesta ya la hace idempotente). |
 | **Concurrencia** | `finish` usa `updateMany({ where: { id, finishedAt: null } })`: solo el primer request "gana" y paga, todo dentro de `prisma.$transaction`. |
 | **No filtrar respuestas** | `GET /quizzes/:id` nunca envía `isCorrect` ni el `bucket` de los ítems `classify`. El serializador tiene su propio test. |
@@ -67,6 +70,15 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
 **Demo en el dominio:** el alumno entra y ve su mapa: M1 abierto, M2–M5 con candado, monedas y XP arriba y barra inferior. Al tocar M1 se acerca (zoom) a sus 3 submódulos: Lección abierta, Quiz y Prueba cerrados.
 
 - **Schema:** migración v1.3 completa (§1.2) + §8 → v1.3 en el contexto + seed de `AnswerOption` por `order`.
+- **Config:** crear `packages/shared/src/game-rules.ts` con todos los valores del juego (decisión 2).
+- **Rate limit para el aula** (decisión 1). Hoy todo va por IP: global 120/min, logins 10/min, perfiles 30/min. Pasa a:
+  - **Login de alumno** (`POST /auth/student/login`): límite **por alumno** (`studentId` del body), ej. 10/min, más un límite **por IP alto** como protección general, ej. 200/min (40 niños entrando a la vez desde el mismo NAT no lo alcanzan).
+  - **Perfiles** (`GET /auth/students?sectionCode=`): límite **por sección** (`sectionCode`), ej. 60/min, + por IP alto.
+  - **Rutas autenticadas**: límite **por usuario** (JWT `sub` + rol), ej. 120/min, + por IP alto, ej. 2000/min.
+  - **Login docente**: se queda **por IP** (10/min).
+  - Se hace con `getTracker` propio o con throttlers con nombre de `@nestjs/throttler`. El bloqueo por PIN (`maxPinAttempts`) sigue protegiendo cada perfil.
+  - Los números finales se calibran en la 2.1 y se dejan como constantes en un solo lugar del api.
+  - Tests Jest: 40 logins de alumnos distintos desde la misma IP pasan; 11 al mismo alumno → 429.
 - **API** (módulo Nest `progress` + `student-map`):
   - `GET /me/map` → 5 módulos `{id, code, order, title, color, status, percent, comingSoon}` + `{coins, xp}`.
   - `GET /modules/:id` → los 3 submódulos `{type, status, refId (lessonId/quizId), bestScore, bestStars}`.
@@ -75,7 +87,7 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
   - Agregar **TanStack Query** (~13 KB gzip).
   - Layout del estudiante: HUD (monedas, XP) + **barra inferior** Mapa · Recompensas · Perfil (las dos últimas como "próximamente" hasta la 2.5; Perfil ya trae **Salir**). En ≥ 1024 px, sidebar.
   - `/mapa`: camino vertical con scroll, 5 islas en rombo con su color, sin solaparse a 360 px.
-  - `/mapa/:code` (ej. `/mapa/m1`): "zoom" a los 3 submódulos. Transición CSS (respetando `prefers-reduced-motion`); Framer Motion solo si la CSS no alcanza ❓.
+  - `/mapa/:code` (ej. `/mapa/m1`): "zoom" a los 3 submódulos. Transición CSS (respetando `prefers-reduced-motion`); Framer Motion solo si la CSS no alcanza.
   - El HUD toma monedas y XP de `/me/map` (no del `user` del login, que queda viejo).
 - **Pruebas:**
   - Jest de `computeMap`: alumno sin filas → M1 abierto; lección hecha → quiz abierto; prueba aprobada → M2 abierto; módulo sin prueba → `comingSoon`.
@@ -94,12 +106,18 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
   - `/mapa/m1/leccion`: barra "Paso X de N", Waddles (en lugar del sol del mockup), Atrás/Siguiente de 56 px.
   - Un **paso** = un bloque `diagram`/`image` + los `text` que le siguen. `waddles_tip` va al final. No hace falta cambiar el schema.
   - Componente `<Diagram>` con íconos locales para `COIN` (moneda con cerdito, distinta de los Bs.) y `PIG`.
-  - **Emojis:** subset local de SVG ❓ (en la Fase 1 ya se vieron como cuadros en algunos equipos).
+  - **Emojis (decisión 4):** **Twemoji en SVG local**: solo los emojis que se usan (~20 archivos en `apps/web/src/assets/emoji/`), licencia CC-BY 4.0 con crédito en el README. Un componente `<Emoji>` los pinta; `parseDiagram` los reconoce. **También se arreglan los emojis de los botones de la bienvenida** (pendiente de la Fase 1).
   - Agregar **canvas-confetti** (~4 KB).
 - **Pruebas:**
   - Vitest de `parseDiagram` con todos los bloques del seed.
   - Jest: `complete` dos veces → XP una sola vez; lección cerrada → 403.
-  - Integración con una BD de pruebas para la transacción ❓.
+  - **Integración contra `contikids_test`** (decisión 5), que se prepara en esta sub-fase:
+    - `CREATE DATABASE contikids_test` dentro del **mismo** contenedor `contikids-postgres` (sin contenedor nuevo) + `migrate deploy` contra ella.
+    - Los tests de integración leen **solo** `TEST_DATABASE_URL`, nunca `DATABASE_URL`.
+    - **Candado:** un `globalSetup` de Jest aborta si el nombre de la BD no es exactamente `contikids_test` o si la URL coincide con `DATABASE_URL`. Así las pruebas **nunca** pueden tocar producción, ni por error.
+    - Cada test limpia sus propias tablas (`TRUNCATE` solo en `contikids_test`).
+    - CI: servicio `postgres:16-alpine` con la BD `contikids_test`.
+    - Producción (`contikids`) es la base real que ve la profesora: ningún script de prueba la usa.
 
 ### 2.3 — Quiz con pista y reintento
 **Demo:** Quiz de M1 de una pregunta por pantalla. Si falla, Waddles da la pista y se reintenta; al 2.º fallo, explica y sigue. El resultado muestra las estrellas, las monedas ganadas y el +30 XP. La Prueba queda abierta.
@@ -148,11 +166,11 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
 - **Web:**
   - `/recompensas`: grid de 1 columna en móvil y 3 en desktop (`recompensas_contikids.html`).
   - `/perfil` (`perfil_del_estudiante_contikids.html` + medallas y progreso por módulo, §10).
-  - "Ajustes" queda fuera de la barra hasta la Fase 5 ❓.
+  - "Ajustes" queda fuera de la barra hasta la Fase 5.
 - **Pruebas:** Jest de los dos endpoints (alumno sin nada / con M1 completo), capturas a 360 px.
 
 ### 2.6 — Módulo 1 completo de punta a punta + demo
-**Demo:** un alumno nuevo recorre todo M1 en el dominio (lección completa con trueque y necesidad vs deseo, quiz de 5, prueba de 6) y gana la medalla. Además, los 6 alumnos demo muestran **progreso variado** para la presentación.
+**Demo:** un alumno demo sin progreso (los alumnos nuevos los crea el docente en la Fase 4) recorre todo M1 en el dominio (lección completa con trueque y necesidad vs deseo, quiz de 5, prueba de 6) y gana la medalla. Además, los 6 alumnos demo muestran **progreso variado** para la presentación.
 
 - **Seed:**
   - Contenido provisional de M1 (§4.1), marcado `// PROVISIONAL — Contenido`.
@@ -166,8 +184,8 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
   - las 4 páginas de Pedro siguen igual.
 - **Docs:** progreso.md, §9 si cambió algún contrato, y la Fase 2 marcada como terminada.
 
-### 2.7 — Tiempo de juego (opcional ❓)
-**Demo:** tras jugar unos minutos, el tiempo activo del alumno aparece en la BD, listo para "Control de tiempos" (Fase 4).
+### ~~2.7 — Tiempo de juego~~ → **se movió a la Fase 4** (decisión 6)
+El diseño queda anotado aquí para la Fase 4. En la Fase 2 solo se guarda `timeSeconds` por respuesta y `timeSecs` por submódulo (ya en 2.2–2.4).
 
 - **API:** `POST /sessions/heartbeat` `{moduleId?}` cada 30 s. Abre o continúa una `PlaySession` (nueva si pasaron > 2 min) y suma `activeSecs` y `Student.totalPlaySecs`, con tope de 30 s por latido.
 - **Web:** hook `useHeartbeat` que solo late con la pestaña visible (Page Visibility API).
@@ -182,7 +200,7 @@ Cada sub-fase cierra con un commit (Conventional Commits) y su push, que desplie
 | 2.4 | Prueba + resultado/medalla | (mismos de 2.3) | — |
 | 2.5 | Recompensas, Perfil | `GET /me/rewards`, `GET /me/profile` | — |
 | 2.6 | Recorrido M1 completo | — | Solo seed (contenido + demo) |
-| 2.7 | — | `POST /sessions/heartbeat` | — |
+| ~~2.7~~ | Pasa a la Fase 4 | (`POST /sessions/heartbeat`) | — |
 
 ---
 
@@ -225,19 +243,24 @@ Cada pregunta lleva `hint` y `explanation` en el tono del prototipo (se escriben
 
 ---
 
-## 5. Dudas y decisiones para Pedro
-Cada una trae mi recomendación; con un "OK a todo" sigo con las recomendadas.
+## 5. Decisiones de Pedro (2026-11-20)
+Pedro respondió 6 dudas. Para las otras 7 se aplican las recomendaciones del plan. **Todo esto ya está reflejado en §2 y §3.**
 
-1. **Nota con reintento:** 1.er intento = 1 punto, 2.º = 0,5, fallo = 0. → *Recomiendo sí.* (Si el 2.º intento valiera completo, todos aprobarían la prueba.)
-2. **El quiz no exige nota:** terminarlo, con cualquier resultado, abre la prueba (es práctica). → *Recomiendo sí* (Pere Marquès).
-3. **Premios al repetir:** XP y monedas solo la primera vez que se completa cada submódulo; repetir solo mejora la nota y las estrellas. Bono de la prueba = **+5 monedas**. → *Recomiendo sí.* (La alternativa es pagar la diferencia si mejora, pero es más compleja.)
-4. **Una lección por módulo con más pasos** (en vez de varias lecciones y una tabla `LessonProgress`). → *Recomiendo una.*
-5. **Emojis:** usar un subset local de SVG (~20 archivos de Twemoji, licencia CC-BY 4.0, con crédito en el README) para que no salgan cuadros en Android viejos y siga sin CDN. → *Recomiendo sí.* La alternativa es reemplazarlos por íconos propios (más trabajo).
-6. **Rate limit en el aula** ⚠️: hoy los límites van **por IP** (logins 10/min, global 120/min). En una escuela, todos los dispositivos suelen salir por **la misma IP pública**, así que 30 niños entrando a la vez se bloquean. → *Recomiendo* en la 2.1: límite global por **alumno o docente (JWT `sub`)** en las rutas autenticadas y login de estudiante por **IP + `studentId`** (el bloqueo por PIN ya protege cada perfil). Sería tocar código de la Fase 1, por eso pido OK.
-7. **BD de pruebas:** crear la base `contikids_test` dentro del mismo contenedor Postgres (sin contenedor nuevo) + un servicio Postgres en el CI, para probar de verdad las transacciones de premios. → *Recomiendo sí* (desde la 2.2).
-8. **Probar en el dominio cambia el progreso de los alumnos demo**, porque desarrollo y producción comparten la BD. Lo resuelvo con `SEED_RESET_DEMO_PROGRESS=1` (2.6). ¿Te basta o prefieres ya separar dev y prod?
-9. **Tiempo de juego (2.7):** ¿se hace en la Fase 2 para que la Fase 4 ya tenga datos reales, o se deja para la Fase 4? → *Recomiendo hacerlo en la Fase 2.*
-10. **Ajustes:** en la Fase 2 la barra inferior lleva Mapa · Recompensas · Perfil (Salir va en Perfil). Ajustes (sonido, tema) entra en la Fase 5. → *Recomiendo sí.*
-11. **Dependencias nuevas:** TanStack Query y canvas-confetti; Framer Motion **solo si** el zoom del mapa lo necesita (cargado por ruta). Zustand y dnd-kit esperan a la Fase 3. → *Recomiendo sí.*
-12. **Nombres de las medallas:** el seed dice "Maestro del Dinero" y §7 "Maestra del Dinero". Además, §7 sugiere que "Contador Estrella" es por **completar los 5** (medalla global), pero el seed la puso en M5. → No bloquea la Fase 2: ¿lo decide Contenido para la Fase 3?
-13. **Contenido provisional de M1 (§4.1):** ¿lo cargo marcado como provisional mientras Contenido entrega el final? → *Recomiendo sí.*
+| # | Tema | Decisión |
+|---|---|---|
+| 1 | **Rate limit en el aula** | El límite del login de alumnos pasa a ser **por alumno** y el de la lista de perfiles **por sección**, no por IP. Se mantiene un límite **por IP más alto** como protección general. El login docente sigue por IP. Las rutas autenticadas van por usuario. → 2.1. |
+| 2 | **Nota y valores del juego** | Acierto al 1.er intento = 1 punto, al 2.º = 0,5, fallo = 0. **Todos los valores** (puntos, XP, monedas, bono, etc.) en **un solo archivo**: `packages/shared/src/game-rules.ts`, para ajustarlos fácil cuando la profesora lo pida. |
+| 3 | **Premios al repetir** | XP y monedas **solo la primera vez** que se completa cada submódulo + **bono de 5 monedas** al aprobar la prueba. |
+| 4 | **Emojis** | **Twemoji en SVG local** (CC-BY 4.0, crédito en el README). Aprovechar para **arreglar los emojis de la bienvenida**. → 2.2. |
+| 5 | **Bases de datos** | Producción (`contikids`) = la base real que ve la profesora. **`contikids_test`** solo para pruebas automáticas, en el **mismo** contenedor. Las pruebas **nunca** tocan producción: candado en el `globalSetup` de Jest. → 2.2. |
+| 6 | **Tiempo de juego** | Pasa a la **Fase 4** (la 2.7 sale de esta fase). |
+| — | **Escala** | Diseño para **UNA sección de ~30–40 alumnos**. Sin multi-escuela ni nada extra. Las claves y los PIN los crea y los restablece el docente. |
+
+**Recomendaciones aplicadas** (las otras 7 dudas):
+- **El quiz no exige nota:** terminarlo, con cualquier resultado, abre la prueba.
+- **Una lección por módulo** con más pasos. No se crea la tabla `LessonProgress`.
+- **Datos demo:** probar en el dominio cambia el progreso de los alumnos demo. Se limpia con `SEED_RESET_DEMO_PROGRESS=1`, que solo afecta a la sección `DEMO-5A` (2.6). No se separan dev y prod por ahora.
+- **Ajustes:** la barra inferior lleva Mapa · Recompensas · Perfil, y Salir va en Perfil. Ajustes (sonido, tema) queda para la Fase 5.
+- **Dependencias:** TanStack Query y canvas-confetti. Framer Motion solo si el zoom del mapa lo necesita, cargado por ruta. Zustand y dnd-kit quedan para la Fase 3.
+- **Nombres de las medallas:** "Maestro/Maestra del Dinero" y si "Contador Estrella" es la medalla de M5 o una global por completar los 5 los decide Contenido antes de la Fase 3. La Fase 2 usa los nombres del seed.
+- **Contenido provisional de M1:** se carga el de §4.1, marcado `PROVISIONAL`, hasta que Contenido entregue el final.
