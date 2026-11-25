@@ -44,10 +44,16 @@ function Symbol({ token }: { token: DiagramToken }) {
   }
 }
 
-export function Diagram({ text }: { text: string }) {
+export function Diagram({
+  text,
+  label = 'Diagrama de la lección',
+}: {
+  text: string;
+  label?: string;
+}) {
   return (
     <figure
-      aria-label="Diagrama de la lección"
+      aria-label={label}
       className="card-game flex min-h-28 flex-wrap items-center justify-center gap-2 text-xl [overflow-wrap:anywhere]"
     >
       {parseDiagram(text).map((token, i) => (

@@ -48,9 +48,9 @@ function SubmoduleCard({ sub, color, code }: { sub: MapSubmodule; color: string;
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="font-display text-lg font-extrabold">
-          {sub.type === 'LESSON' && code === 'M1' && !locked && !soon ? (
+          {sub.type !== 'EXAM' && code === 'M1' && !locked && !soon ? (
             <Link
-              to="/mapa/m1/leccion"
+              to={sub.type === 'QUIZ' ? '/mapa/m1/quiz' : '/mapa/m1/leccion'}
               className="after:absolute after:inset-0 after:rounded-[var(--radius-card)]"
             >
               {title}

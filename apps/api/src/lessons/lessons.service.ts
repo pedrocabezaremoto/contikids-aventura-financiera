@@ -43,7 +43,7 @@ export class LessonsService {
     }
     const ids = { studentId, moduleId: module.id };
     return this.prisma.$transaction(async (tx) => {
-      const xpAwarded = await this.rewards.grantXp(
+      const { xpAwarded } = await this.rewards.grant(
         tx,
         studentId,
         `LESSON:${module.code}`,

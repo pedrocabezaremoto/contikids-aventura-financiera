@@ -3,13 +3,22 @@
 > Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.3).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
-## Estado al 2026-11-24 — Sub-fase 2.2 (CU-04) implementada y probada en local
+## 2026-11-25 — Sub-fase 2.3 implementada y verificada en local (CU-05)
+
+- **Recorrido.** La tarjeta Quiz de M1 abre `/mapa/m1/quiz`. Se presenta una pregunta por pantalla, con el diagrama del seed y las opciones barajadas. El primer fallo muestra la pista de Waddles y conserva la pregunta. Al acertar o agotar el reintento, aparecen la explicación y el diagrama de resultado. Al terminar se muestran nota, estrellas de esfuerzo, monedas y XP y se puede volver a M1.
+- **API.** Las cuatro rutas bajo `/api/v1` son `GET /quizzes/:id`, `POST /quizzes/:id/attempts`, `POST /attempts/:id/answers` y `POST /attempts/:id/finish`. Exigen rol estudiante y acceso al módulo y al Quiz. Un intento ajeno devuelve 404. El GET entrega opciones ordenadas y reserva las soluciones para el feedback. El cliente puede reenviar la misma respuesta con `expectedTry` tras un corte de red sin consumir otro intento.
+- **Cierre.** El servidor usa `GAME_RULES` para la nota (1 / 0,5 / 0), estrellas, tiempo, monedas y XP. Una transacción guarda el intento, acumula tiempo y actualiza las mejores marcas. El primer cierre concede +30 XP y +1 moneda por pregunta acertada mediante `RewardGrant QUIZ:M1`. Incluso con cero aciertos, M1 llega al 66 % y EXAM queda abierto. Los repasos conservan los premios y el progreso posterior.
+- **Pruebas.** Pasaron lint, typecheck y build del monorepo, 20 pruebas de shared, 3 de web, 45 unitarias de API y 15 de integración HTTP/Prisma exclusivamente en `contikids_test`. Se probaron permisos, soluciones ocultas, los dos fallos, reenvío tras una pista, nota y estrellas, cierre incompleto, cierre doble y repasos concurrentes.
+- **Móvil.** Chrome headless a 360×740 sobre el build local y con respuestas HTTP simuladas. Se comprobó el recorrido desde la tarjeta, carga, vacío, error con reintento, pista, explicación, premios y regreso a M1 con la Prueba abierta. Las opciones ocupan una columna. El control más pequeño medido fue de 58 px de alto. El ancho del documento fue de 360 px en todos los estados y hubo cero solicitudes a dominios externos.
+- **Pendiente.** Revisión de Pedro y validación de la 2.3 en producción tras el despliegue. La sub-fase 2.4 (Prueba) queda pendiente de implementación.
+
+## 2026-11-25 — Sub-fase 2.2 cerrada y verificada en producción (CU-04)
 
 - **Lección de M1.** Desde el mapa se puede entrar a `/mapa/m1/leccion`. Los siete bloques del seed forman cuatro pasos: ingreso, gasto, ahorro y consejo de Waddles. Cada imagen o diagrama conserva las explicaciones que le siguen. La bienvenida y los diagramas usan los SVG locales de Twemoji con atribución en el README.
 - **API.** `GET /api/v1/lessons/:id` entrega los bloques ordenados. `POST /api/v1/lessons/:id/complete` recibe `{ timeSecs }` y devuelve `{ xpAwarded }`. Ambas rutas exigen rol estudiante y acceso al módulo. El primer cierre guarda el tiempo, completa la lección, abre el Quiz, lleva M1 al 33 % y suma 20 XP en una transacción con `RewardGrant`. El repaso devuelve 0 XP y conserva el avance posterior.
 - **Verificación.** Lint, typecheck y build completo aprobados. Pasaron 20 pruebas de shared (incluidos los diagramas del seed), 2 de web, 34 unitarias de API y 11 de integración HTTP/Prisma exclusivamente en `contikids_test`. Se verificaron dos cierres concurrentes, el repaso y las denegaciones por rol y contenido cerrado.
 - **Prueba móvil.** Chrome a 360×740 con el build y respuestas HTTP simuladas: cuatro pasos sin desbordamiento horizontal, Atrás/Siguiente de 56 px, estados de carga, vacío y error, reintento al guardar, celebración con confeti y repaso con movimiento reducido. Regreso a M1 con Quiz abierto. Cero solicitudes a dominios externos.
-- **Pendiente.** Revisión de Pedro, commit, push y verificación en el dominio. La pantalla y los endpoints del Quiz corresponden a la sub-fase 2.3, pendiente de autorización.
+- **Verificación en producción.** Pedro validó el commit `0a73b9f`. Al completar la lección se otorgaron 20 XP, M1 quedó al 33 % y se abrió la tarjeta Quiz.
 
 ## Estado al 2026-11-20 (Fase 2 — sub-fase 2.1 CERRADA y verificada por Pedro; la 2.2 espera su OK)
 

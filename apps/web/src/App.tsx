@@ -9,6 +9,7 @@ import { PinEntry, ProfilePicker, SectionCode } from './pages/StudentAccess';
 import { TeacherLogin } from './pages/TeacherLogin';
 import { Welcome } from './pages/Welcome';
 import { LessonPage } from './student/LessonPage';
+import { QuizPage } from './student/QuizPage';
 import { MapPage } from './student/MapPage';
 import { ModulePage } from './student/ModulePage';
 import { StudentLayout } from './student/StudentLayout';
@@ -35,6 +36,7 @@ export function App() {
               <Route path="/mapa" element={<MapPage />} />
               <Route path="/mapa/:code" element={<ModulePage />} />
               <Route path="/mapa/m1/leccion" element={<LessonPage />} />
+              <Route path="/mapa/m1/quiz" element={<QuizPage />} />
               <Route path="/recompensas" element={<RewardsPage />} />
               <Route path="/perfil" element={<ProfilePage />} />
             </Route>

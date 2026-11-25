@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   computeMap,
@@ -12,9 +13,12 @@ export class ProgressService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Todos los módulos con el estado de este alumno (calculado al leer). */
-  private async load(studentId: number): Promise<ModuleState[]> {
+  private async load(
+    studentId: number,
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<ModuleState[]> {
     const [modules, rows] = await Promise.all([
-      this.prisma.learningModule.findMany({
+      db.learningModule.findMany({
         orderBy: { order: 'asc' },
         select: {
           id: true,
@@ -26,7 +30,7 @@ export class ProgressService {
           quizzes: { select: { id: true, type: true } },
         },
       }),
-      this.prisma.submoduleProgress.findMany({
+      db.submoduleProgress.findMany({
         where: { studentId },
         select: { moduleId: true, type: true, status: true, bestScore: true, bestStars: true },
       }),
@@ -59,8 +63,8 @@ export class ProgressService {
   }
 
   /** GET /modules/:ref — `ref` = id numérico o código ("M1"). Módulo cerrado → 403 CONTENT_LOCKED. */
-  async getModule(studentId: number, ref: string) {
-    const states = await this.load(studentId);
+  async getModule(studentId: number, ref: string, db: Prisma.TransactionClient = this.prisma) {
+    const states = await this.load(studentId, db);
     const found = /^\d+$/.test(ref)
       ? states.find((s) => s.module.id === Number(ref))
       : states.find((s) => s.module.code === ref.toUpperCase());
