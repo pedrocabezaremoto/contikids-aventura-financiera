@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
+import { LessonsModule } from './lessons/lessons.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProgressModule } from './progress/progress.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
@@ -16,6 +17,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
     HealthModule,
     AuthModule,
     ProgressModule,
+    LessonsModule,
   ],
 })
 export class AppModule {}

@@ -29,14 +29,14 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-function SubmoduleCard({ sub, color }: { sub: MapSubmodule; color: string }) {
+function SubmoduleCard({ sub, color, code }: { sub: MapSubmodule; color: string; code: string }) {
   const { title, blurb, icon: Icon } = INFO[sub.type];
   const locked = sub.status === 'LOCKED';
   const soon = sub.refId === null; // el contenido todavía no existe en la BD
   const tone = locked ? LOCKED_COLOR : color;
   return (
     <li
-      className="card-game flex items-center gap-3"
+      className="card-game relative flex items-center gap-3"
       aria-label={`${title}: ${soon ? 'próximamente' : STATUS_TEXT[sub.status].toLowerCase()}`}
       style={locked ? { opacity: 0.8 } : undefined}
     >
@@ -47,7 +47,18 @@ function SubmoduleCard({ sub, color }: { sub: MapSubmodule; color: string }) {
         {locked ? <LockIcon /> : <Icon />}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="font-display text-lg font-extrabold">{title}</span>
+        <span className="font-display text-lg font-extrabold">
+          {sub.type === 'LESSON' && code === 'M1' && !locked && !soon ? (
+            <Link
+              to="/mapa/m1/leccion"
+              className="after:absolute after:inset-0 after:rounded-[var(--radius-card)]"
+            >
+              {title}
+            </Link>
+          ) : (
+            title
+          )}
+        </span>
         <span className="text-sm text-muted">{blurb}</span>
         {sub.status === 'COMPLETED' && sub.bestStars !== null && (
           <span className="mt-1 flex items-center gap-2 text-sm">
@@ -66,7 +77,6 @@ function SubmoduleCard({ sub, color }: { sub: MapSubmodule; color: string }) {
         ) : locked ? (
           <span className="rounded-full bg-sky-b px-3 py-1 text-muted">Cerrado</span>
         ) : (
-          // La pantalla de cada submódulo llega en la 2.2 (lección), 2.3 (quiz) y 2.4 (prueba).
           <span className="rounded-full bg-yellow px-3 py-1 text-ink">Abierto</span>
         )}
       </span>
@@ -141,7 +151,7 @@ export function ModulePage() {
       </div>
       <ol className="flex flex-col gap-3">
         {submodules.map((s) => (
-          <SubmoduleCard key={s.type} sub={s} color={m.color} />
+          <SubmoduleCard key={s.type} sub={s} color={m.color} code={m.code} />
         ))}
       </ol>
       {m.comingSoon && (

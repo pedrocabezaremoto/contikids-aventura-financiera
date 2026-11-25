@@ -8,3 +8,5 @@ export type {
   ProgressStatus,
   SubmoduleType,
 } from './map-types';
+export { parseDiagram, type DiagramToken } from './diagram';
+export type { LessonBlock, LessonDetail, LessonCompletion } from './lesson-types';

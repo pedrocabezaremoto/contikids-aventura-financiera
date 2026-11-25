@@ -3,6 +3,14 @@
 > Leer esto al empezar cada sesión. Fuente de verdad técnica: `docs/CONTIKIDS_CONTEXTO_LLM.md` (v1.3).
 > Puertos y recursos del servidor: `/root/reporte-servidor.md` (fuera del repo).
 
+## Estado al 2026-11-24 — Sub-fase 2.2 (CU-04) implementada y probada en local
+
+- **Lección de M1.** Desde el mapa se puede entrar a `/mapa/m1/leccion`. Los siete bloques del seed forman cuatro pasos: ingreso, gasto, ahorro y consejo de Waddles. Cada imagen o diagrama conserva las explicaciones que le siguen. La bienvenida y los diagramas usan los SVG locales de Twemoji con atribución en el README.
+- **API.** `GET /api/v1/lessons/:id` entrega los bloques ordenados. `POST /api/v1/lessons/:id/complete` recibe `{ timeSecs }` y devuelve `{ xpAwarded }`. Ambas rutas exigen rol estudiante y acceso al módulo. El primer cierre guarda el tiempo, completa la lección, abre el Quiz, lleva M1 al 33 % y suma 20 XP en una transacción con `RewardGrant`. El repaso devuelve 0 XP y conserva el avance posterior.
+- **Verificación.** Lint, typecheck y build completo aprobados. Pasaron 20 pruebas de shared (incluidos los diagramas del seed), 2 de web, 34 unitarias de API y 11 de integración HTTP/Prisma exclusivamente en `contikids_test`. Se verificaron dos cierres concurrentes, el repaso y las denegaciones por rol y contenido cerrado.
+- **Prueba móvil.** Chrome a 360×740 con el build y respuestas HTTP simuladas: cuatro pasos sin desbordamiento horizontal, Atrás/Siguiente de 56 px, estados de carga, vacío y error, reintento al guardar, celebración con confeti y repaso con movimiento reducido. Regreso a M1 con Quiz abierto. Cero solicitudes a dominios externos.
+- **Pendiente.** Revisión de Pedro, commit, push y verificación en el dominio. La pantalla y los endpoints del Quiz corresponden a la sub-fase 2.3, pendiente de autorización.
+
 ## Estado al 2026-11-20 (Fase 2 — sub-fase 2.1 CERRADA y verificada por Pedro; la 2.2 espera su OK)
 
 **Dónde quedamos:** la **2.1 (mapa de islas + base de la Fase 2)** está **cerrada**: desplegada y **probada en el navegador por Pedro** (mapa, zoom a M1, Recompensas, Perfil y Salir: todo bien). **Alumno demo de prueba: Andrés M. (`DEMO-5A`, id 4)**, con un PIN que le puso Pedro (el PIN no se guarda en el repo; los otros 5 alumnos conservan sus PIN originales). **Próximo paso: 2.2 Lección, SOLO con el OK de Pedro; todavía no se empezó.** Antes de seguir, leer `docs/FASE2_PLAN.md` completo (§5 = decisiones de Pedro). **No avanzar a la 2.2 sin el OK de Pedro.**
@@ -246,4 +254,4 @@ Nada de Contikids escucha en `0.0.0.0`. Ojo: `pnpm dev:api` y la api de producci
 - ✅ Waddles y el logo ya están como archivos en `apps/web/src/assets` (no base64).
 - Fuentes self-hosted (el mockup usa Google Fonts).
 - Validación del asiento en el backend (el mockup valida en el navegador).
-- Los bloques `diagram` del seed usan la notación del prototipo (`COIN`, `PIG`, `@g/@r/@b`); el render se hace en la Fase 2.
+- Los bloques `diagram` del seed se interpretan con `parseDiagram` de shared desde la sub-fase 2.2.

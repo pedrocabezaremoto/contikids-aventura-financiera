@@ -1,4 +1,5 @@
 import { Link, Navigate } from 'react-router';
+import { Emoji } from '../components/Emoji';
 import { homeFor, useAuth } from '../auth/auth-context';
 import { Loading, Logo, Screen, Waddles } from '../components/ui';
 
@@ -14,10 +15,10 @@ export function Welcome() {
       <Waddles>¡Hola! Soy Waddles. ¿Quién eres hoy?</Waddles>
       <div className="mt-2 grid gap-4">
         <Link to="/estudiante" className="btn-game btn-game--blue min-h-20 text-xl">
-          🎒 Soy estudiante
+          <Emoji symbol="🎒" decorative /> Soy estudiante
         </Link>
         <Link to="/docente/entrar" className="btn-game min-h-20 text-xl">
-          🍎 Soy docente
+          <Emoji symbol="🍎" decorative /> Soy docente
         </Link>
       </div>
     </Screen>

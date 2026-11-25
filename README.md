@@ -50,3 +50,10 @@ pnpm test       # Vitest (shared) + Jest (api)
 ## Privacidad
 
 El repositorio es público: no se suben `.env`, llaves, cédulas ni datos reales de niños. Los datos del seed son ficticios.
+
+### Créditos de los emojis
+
+Los SVG de la bienvenida y de los diagramas se distribuyen localmente en
+`apps/web/src/assets/emoji/`. Gráficos originales de Twitter, Inc. y otros
+colaboradores, versión 14.0.2, sin modificaciones.
+[Twemoji](https://github.com/twitter/twemoji/tree/v14.0.2) · [Licencia CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
